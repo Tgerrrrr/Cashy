@@ -44,15 +44,28 @@ class ActivityViewModel : ViewModel() {
         viewModelScope.launch {
             _state.value = ActivityState.Loading
             try {
+
                 val entries = when (category) {
+
                     "Inventory" -> repository.getInventoryActivities()
-                    "Sales"     -> repository.getSalesActivities()
-                    else        -> repository.getAllActivities()
+
+                    "Sales" -> repository.getSalesActivities()
+
+                    "System" -> repository.getSystemActivities()
+
+                    else -> repository.getAllActivities()
                 }
-                _state.value = if (entries.isEmpty()) ActivityState.Empty
-                else ActivityState.Success(entries)
+
+                _state.value =
+                    if (entries.isEmpty())
+                        ActivityState.Empty
+                    else
+                        ActivityState.Success(entries)
+
             } catch (e: Exception) {
-                _state.value = ActivityState.Error(e.message ?: "Failed to load activity")
+                _state.value = ActivityState.Error(
+                    e.message ?: "Failed to load activity"
+                )
             }
         }
     }

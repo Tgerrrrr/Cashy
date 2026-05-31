@@ -98,3 +98,10 @@ data class KasLog(
     val referensi_id: String? = null,
     val created_at: String = ""
 )
+@Serializable
+data class PelangganLog(
+    val id: String = "",
+    val pelanggan_id: String = "",
+    val aksi: kotlinx.serialization.json.JsonElement,
+    val created_at: String = ""
+)

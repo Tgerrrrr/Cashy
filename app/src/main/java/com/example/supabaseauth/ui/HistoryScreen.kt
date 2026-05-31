@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,9 +28,6 @@ import com.example.supabaseauth.model.ActivityEntryUI
 import com.example.supabaseauth.viewmodel.ActivityState
 import com.example.supabaseauth.viewmodel.ActivityViewModel
 
-/* ─────────────────────────────────────────────
-   Screen
-───────────────────────────────────────────── */
 @Composable
 fun HistoryScreen(
     viewModel: ActivityViewModel = viewModel()
@@ -47,8 +45,12 @@ fun HistoryScreen(
 
     val filtered = remember(entries, searchQuery, selectedFilter) {
         entries.filter { entry ->
+
+            val categorySafe = entry.category ?: ""
+
             val matchesFilter =
-                selectedFilter == "All" || entry.category == selectedFilter
+                selectedFilter == "All" ||
+                        categorySafe.equals(selectedFilter, ignoreCase = true)
 
             val matchesSearch =
                 searchQuery.isBlank() ||
@@ -67,13 +69,12 @@ fun HistoryScreen(
 
         Spacer(Modifier.height(20.dp))
 
-        /* TITLE */
         Text(
             text = "Activity History",
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth(),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
 
         Spacer(Modifier.height(16.dp))
@@ -120,14 +121,16 @@ fun HistoryScreen(
                 ActivityFilterChip(
                     text = option,
                     selected = selectedFilter == option,
-                    onClick = { selectedFilter = option }
+                    onClick = {
+                        selectedFilter = option
+                        viewModel.loadByCategory(option)
+                    }
                 )
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        /* STATE HANDLING */
         when (state) {
 
             is ActivityState.Loading -> {
@@ -179,64 +182,99 @@ fun HistoryScreen(
     }
 }
 
-/* ─────────────────────────────────────────────
-   Card
-───────────────────────────────────────────── */
+/* CARD */
 @Composable
 private fun ActivityCard(entry: ActivityEntryUI) {
+
+    val isSystem = entry.category.equals("System", true)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Color.White)
-            .padding(16.dp),
+            .padding(14.dp),
         verticalAlignment = Alignment.Top
     ) {
 
+        // ICON
         Box(
             modifier = Modifier
-                .size(29.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(Color(0xFFE6F3F6)),
+                .background(
+                    if (isSystem) Color(0xFFFFF3E0)
+                    else Color(0xFFE6F3F6)
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Info, null, tint = Color(0xFF006C86))
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = if (isSystem) Color(0xFFF57C00) else Color(0xFF006C86)
+            )
         }
 
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
 
+            // TITLE (clean, single line)
             Text(
                 text = entry.title,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1E1E1E),
+                maxLines = 1
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
-            entry.details.forEach {
+            // DETAILS (compact instead of messy stack)
+            entry.details.take(2).forEach {
                 Text(
                     text = it,
-                    fontSize = 13.sp,
-                    color = Color(0xFF777777)
+                    fontSize = 12.sp,
+                    color = Color(0xFF6B6B6B),
+                    maxLines = 1
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // CATEGORY BADGE
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        when (entry.category) {
+                            "System" -> Color(0xFFFFF3E0)
+                            "Inventory" -> Color(0xFFE8F5E9)
+                            "Sales" -> Color(0xFFE3F2FD)
+                            else -> Color(0xFFF1F1F1)
+                        }
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = entry.category,
+                    fontSize = 10.sp,
+                    color = Color.DarkGray
                 )
             }
         }
 
+        // TIME (fixed format, not ugly raw timestamp)
         Text(
             text = entry.timestamp,
-            fontSize = 12.sp,
-            color = Color.Black,
-            textAlign = androidx.compose.ui.text.style.TextAlign.End
+            fontSize = 10.sp,
+            color = Color(0xFF9E9E9E),
+            textAlign = TextAlign.End
         )
     }
 }
 
-/* ─────────────────────────────────────────────
-   Filter chip
-───────────────────────────────────────────── */
+/* CHIP */
 @Composable
 private fun ActivityFilterChip(
     text: String,

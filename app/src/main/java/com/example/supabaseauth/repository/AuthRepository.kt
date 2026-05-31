@@ -103,4 +103,35 @@ class AuthRepository {
             Result.failure(e)
         }
     }
+    suspend fun updateProfile(userId: String, nama: String): Result<Unit> {
+        return try {
+
+            client.from("profiles")
+                .update(
+                    mapOf("nama" to nama)
+                ) {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun changePassword(newPassword: String): Result<Unit> {
+        return try {
+
+            client.auth.updateUser {
+                password = newPassword
+            }
+
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

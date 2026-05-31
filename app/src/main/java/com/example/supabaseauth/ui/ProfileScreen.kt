@@ -21,23 +21,32 @@ fun ProfileScreen(
     onLogout: () -> Unit
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
-    val initial = currentUserEmail?.firstOrNull()?.uppercaseChar() ?: 'U'
+
+    var showEditProfile by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
+    var showAboutApp by remember { mutableStateOf(false) }
+
+    var name by remember { mutableStateOf(currentUserEmail?.substringBefore("@") ?: "User") }
+    var email by remember { mutableStateOf(currentUserEmail ?: "") }
+
+    val initial = name.firstOrNull()?.uppercaseChar() ?: 'U'
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(CashyColors.Background)
     ) {
-        // ── HEADER ──────────────────────────────────
+
+        // ── HEADER ─────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(CashyColors.Primary)
-                .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 32.dp),
+                .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Avatar
+
                 Box(
                     modifier = Modifier
                         .size(72.dp)
@@ -46,74 +55,196 @@ fun ProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text       = initial.toString(),
-                        fontSize   = 32.sp,
+                        text = initial.toString(),
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color      = CashyColors.TextOnDark
+                        color = CashyColors.TextOnDark
                     )
                 }
+
                 Spacer(Modifier.height(10.dp))
+
                 Text(
-                    text       = currentUserEmail?.substringBefore("@") ?: "Pengguna",
-                    fontSize   = 18.sp,
+                    text = name,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color      = CashyColors.TextOnDark
+                    color = CashyColors.TextOnDark
                 )
+
                 Text(
-                    text     = currentUserEmail ?: "-",
+                    text = email,
                     fontSize = 13.sp,
-                    color    = CashyColors.TextOnDark.copy(alpha = 0.7f)
+                    color = CashyColors.TextOnDark.copy(alpha = 0.7f)
                 )
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
-        // ── MENU ITEMS ───────────────────────────────
+        // ── MENU ─────────────────────────────
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            ProfileMenuItem(icon = Icons.Default.Person,   label = "Edit Profil")
-            ProfileMenuItem(icon = Icons.Default.Lock,     label = "Ubah Password")
-            ProfileMenuItem(icon = Icons.Default.Info,     label = "Tentang Aplikasi")
+
+            ProfileMenuItem(
+                icon = Icons.Default.Person,
+                label = "Edit Profile",
+                onClick = { showEditProfile = true }
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Default.Lock,
+                label = "Change Password",
+                onClick = { showChangePassword = true }
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Default.Info,
+                label = "About App",
+                onClick = { showAboutApp = true }
+            )
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // ── LOGOUT ───────────────────────────────────
+        // ── LOGOUT ───────────────────────────
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             Button(
                 onClick = { showLogoutDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape  = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CashyColors.Error,
-                    contentColor   = CashyColors.TextOnDark
+                    contentColor = CashyColors.TextOnDark
                 )
             ) {
-                Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Keluar", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text("Logout")
             }
         }
     }
 
+    // ─────────────────────────────────────────────
+    // EDIT PROFILE DIALOG
+    // ─────────────────────────────────────────────
+    if (showEditProfile) {
+        AlertDialog(
+            onDismissRequest = { showEditProfile = false },
+            title = { Text("Edit Profile") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name") }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showEditProfile = false }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditProfile = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ─────────────────────────────────────────────
+    // CHANGE PASSWORD DIALOG
+    // ─────────────────────────────────────────────
+    if (showChangePassword) {
+
+        var oldPass by remember { mutableStateOf("") }
+        var newPass by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showChangePassword = false },
+            title = { Text("Change Password") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = oldPass,
+                        onValueChange = { oldPass = it },
+                        label = { Text("Old Password") }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newPass,
+                        onValueChange = { newPass = it },
+                        label = { Text("New Password") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    // dummy validation
+                    showChangePassword = false
+                }) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePassword = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ─────────────────────────────────────────────
+    // ABOUT APP DIALOG
+    // ─────────────────────────────────────────────
+    if (showAboutApp) {
+        AlertDialog(
+            onDismissRequest = { showAboutApp = false },
+            title = { Text("About App") },
+            text = {
+                Text(
+                    "Cashy is a modern inventory and sales management app designed to help small businesses track products, sales, and customers efficiently. Version 1.0.0 (Demo Build)."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutApp = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    // ─────────────────────────────────────────────
+    // LOGOUT DIALOG
+    // ─────────────────────────────────────────────
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title   = { Text("Keluar?") },
-            text    = { Text("Yakin ingin keluar dari akun ini?") },
+            title = { Text("Logout?") },
+            text = { Text("Are you sure you want to logout from this account?") },
             confirmButton = {
-                TextButton(
-                    onClick = { showLogoutDialog = false; onLogout() },
-                    colors  = ButtonDefaults.textButtonColors(contentColor = CashyColors.Error)
-                ) { Text("Keluar") }
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text("Logout")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) { Text("Batal") }
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -122,24 +253,25 @@ fun ProfileScreen(
 @Composable
 private fun ProfileMenuItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String
+    label: String,
+    onClick: () -> Unit
 ) {
     Card(
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = CashyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier  = Modifier.fillMaxWidth()
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CashyColors.Surface),
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = CashyColors.Primary, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = CashyColors.Primary)
             Spacer(Modifier.width(14.dp))
-            Text(label, fontSize = 14.sp, color = CashyColors.TextPrimary, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = CashyColors.NavUnselected, modifier = Modifier.size(20.dp))
+            Text(label, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, null)
         }
     }
 }

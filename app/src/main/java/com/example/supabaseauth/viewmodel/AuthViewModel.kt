@@ -4,122 +4,217 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.supabaseauth.data.SupabaseClientProvider
+import com.example.supabaseauth.model.Profile
 import com.example.supabaseauth.repository.AuthRepository
+import com.example.supabaseauth.util.AuthErrorMapper
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
 
 class AuthViewModel : ViewModel() {
 
     private val repository = AuthRepository()
     private val client = SupabaseClientProvider.client
 
+    // ─────────────────────────────
+    // STATE
+    // ─────────────────────────────
     private val _authUiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
-    val authUiState: StateFlow<AuthUiState> = _authUiState.asStateFlow()
+    val authUiState: StateFlow<AuthUiState> = _authUiState
 
     private val _authCheckState = MutableStateFlow<AuthCheckState>(AuthCheckState.Checking)
-    val authCheckState: StateFlow<AuthCheckState> = _authCheckState.asStateFlow()
+    val authCheckState: StateFlow<AuthCheckState> = _authCheckState
 
     private val _currentUserEmail = MutableStateFlow<String?>(null)
-    val currentUserEmail: StateFlow<String?> = _currentUserEmail.asStateFlow()
+    val currentUserEmail: StateFlow<String?> = _currentUserEmail
 
     private val _currentUserRole = MutableStateFlow("cashier")
-    val currentUserRole: StateFlow<String> = _currentUserRole.asStateFlow()
+    val currentUserRole: StateFlow<String> = _currentUserRole
+
+    private val _currentUserId = MutableStateFlow<String?>(null)
+    val currentUserId: StateFlow<String?> = _currentUserId
 
     init {
         checkSession()
     }
 
+    // ─────────────────────────────
+    // SESSION CHECK
+    // ─────────────────────────────
     fun checkSession() {
         viewModelScope.launch {
+
             _authCheckState.value = AuthCheckState.Checking
+
             try {
                 withContext(Dispatchers.IO) {
                     client.auth.loadFromStorage()
                 }
+
                 val user = client.auth.currentUserOrNull()
-                Log.d("AUTH", "checkSession user=${user?.email}")
-                if (user != null) {
-                    val profile = try {
-                        client.from("profiles")
-                            .select(Columns.list("id", "nama", "role")) {
-                                filter { eq("id", user.id) }
-                            }
-                            .decodeSingle<com.example.supabaseauth.model.Profile>()
-                    } catch (e: Exception) {
-                        Log.e("AUTH", "profile fetch error: ${e.message}")
-                        null
-                    }
-                    _currentUserEmail.value = user.email
-                    _currentUserRole.value = profile?.role ?: "cashier"
-                    _authCheckState.value = AuthCheckState.LoggedIn
-                } else {
+
+                if (user == null) {
                     _authCheckState.value = AuthCheckState.LoggedOut
+                    return@launch
                 }
+
+                val profile = try {
+                    client
+                        .from("profiles")
+                        .select(Columns.list("id", "nama", "role")) {
+                            filter { eq("id", user.id) }
+                        }
+                        .decodeSingle<Profile>()
+                } catch (e: Exception) {
+                    Log.e("AUTH", "profile fetch error: ${e.message}")
+                    null
+                }
+
+                _currentUserId.value = user.id
+                _currentUserEmail.value = user.email
+                _currentUserRole.value = profile?.role ?: "cashier"
+
+                _authCheckState.value = AuthCheckState.LoggedIn
+
             } catch (e: Exception) {
-                Log.e("AUTH", "checkSession error: ${e.message}", e)
+                Log.e("AUTH", "session error: ${e.message}")
                 _authCheckState.value = AuthCheckState.LoggedOut
             }
         }
     }
 
+    // ─────────────────────────────
+    // LOGIN
+    // ─────────────────────────────
     fun login(email: String, password: String) {
-        Log.d("AUTH", "login() called with $email")
         viewModelScope.launch {
+
             _authUiState.value = AuthUiState.Loading
+
             val result = repository.login(email, password)
+
             result.fold(
                 onSuccess = { profile ->
-                    Log.d("AUTH", "login success, role=${profile.role}")
-                    _currentUserEmail.value = client.auth.currentUserOrNull()?.email
+
+                    val user = client.auth.currentUserOrNull()
+
+                    _currentUserId.value = profile.id
+                    _currentUserEmail.value = user?.email
                     _currentUserRole.value = profile.role
-                    _authUiState.value = AuthUiState.Success()
+
+                    _authUiState.value = AuthUiState.Success("Login successful")
                     _authCheckState.value = AuthCheckState.LoggedIn
                 },
-                onFailure = { e ->
-                    Log.e("AUTH", "login error: ${e.message}", e)
-                    _authUiState.value = AuthUiState.Error(e.message ?: "Login gagal")
+                onFailure = {
+                    _authUiState.value = AuthUiState.Error(
+                        AuthErrorMapper.map(it.message)
+                    )
                 }
             )
         }
     }
 
+    // ─────────────────────────────
+    // REGISTER
+    // ─────────────────────────────
     fun register(email: String, password: String, nama: String) {
         viewModelScope.launch {
+
             _authUiState.value = AuthUiState.Loading
+
             val result = repository.register(email, password, nama, "cashier")
+
             result.fold(
                 onSuccess = {
+
                     _currentUserEmail.value = email
                     _currentUserRole.value = "cashier"
-                    _authUiState.value = AuthUiState.Success()
+
+                    _authUiState.value = AuthUiState.Success("Account created successfully")
                     _authCheckState.value = AuthCheckState.LoggedIn
                 },
-                onFailure = { e ->
-                    Log.e("AUTH", "register error: ${e.message}", e)
-                    _authUiState.value = AuthUiState.Error(e.message ?: "Register gagal")
+                onFailure = {
+                    _authUiState.value = AuthUiState.Error(
+                        AuthErrorMapper.map(it.message)
+                    )
                 }
             )
         }
     }
 
+    // ─────────────────────────────
+    // UPDATE PROFILE
+    // ─────────────────────────────
+    fun updateProfile(userId: String, nama: String) {
+        viewModelScope.launch {
+
+            _authUiState.value = AuthUiState.Loading
+
+            val result = repository.updateProfile(userId, nama)
+
+            result.fold(
+                onSuccess = {
+
+                    _authUiState.value = AuthUiState.Success("Profile updated")
+
+                    // refresh session data
+                    _currentUserEmail.value = client.auth.currentUserOrNull()?.email
+
+                },
+                onFailure = {
+                    _authUiState.value = AuthUiState.Error(
+                        AuthErrorMapper.map(it.message)
+                    )
+                }
+            )
+        }
+    }
+
+    // ─────────────────────────────
+    // CHANGE PASSWORD
+    // ─────────────────────────────
+    fun changePassword(newPassword: String) {
+        viewModelScope.launch {
+
+            _authUiState.value = AuthUiState.Loading
+
+            val result = repository.changePassword(newPassword)
+
+            result.fold(
+                onSuccess = {
+                    _authUiState.value = AuthUiState.Success("Password changed successfully")
+                },
+                onFailure = {
+                    _authUiState.value = AuthUiState.Error(
+                        AuthErrorMapper.map(it.message)
+                    )
+                }
+            )
+        }
+    }
+
+    // ─────────────────────────────
+    // LOGOUT
+    // ─────────────────────────────
     fun logout() {
         viewModelScope.launch {
+
             try {
                 withContext(Dispatchers.IO) {
                     client.auth.signOut()
                 }
-            } catch (e: Exception) {
-                Log.e("AUTH", "logout error: ${e.message}", e)
             } finally {
+
+                _currentUserId.value = null
                 _currentUserEmail.value = null
                 _currentUserRole.value = "cashier"
+
                 _authUiState.value = AuthUiState.Idle
                 _authCheckState.value = AuthCheckState.LoggedOut
             }
