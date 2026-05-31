@@ -103,7 +103,7 @@ Each table is secured using Row Level Security (RLS) policies to ensure data acc
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/cashy.git
+git clone https://github.com/Tgerrrrr/Cashy.git
 ```
 
 2. Open the project in Android Studio.
