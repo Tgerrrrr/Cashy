@@ -1,7 +1,3 @@
-Here is a more formal, clean GitHub README version for your **Cashy** project without emojis or informal styling.
-
----
-
 # Cashy – Point of Sale and Inventory Management System
 
 Cashy is a Point of Sale (POS) and inventory management mobile application built using Kotlin and Jetpack Compose. The application utilizes Supabase as its backend service for authentication, database management, and real-time data operations. It is designed to support small to medium-sized business operations, including product management, sales processing, and activity tracking.
