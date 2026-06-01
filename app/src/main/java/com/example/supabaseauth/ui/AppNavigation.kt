@@ -75,6 +75,14 @@ fun AppNavigation(
         .currentUserEmail
         .collectAsStateWithLifecycle()
 
+    val currentName by authViewModel
+        .currentUserName
+        .collectAsStateWithLifecycle()
+
+    val currentUserId by authViewModel
+        .currentUserId
+        .collectAsStateWithLifecycle()
+
     val navBackStackEntry by navController
         .currentBackStackEntryAsState()
 
@@ -172,6 +180,8 @@ fun AppNavigation(
 
                     onSignup = {
 
+                        authViewModel.resetUiState()
+
                         navController.navigate(
                             Screen.Register.route
                         )
@@ -192,6 +202,8 @@ fun AppNavigation(
                     authUiState = authUiState,
 
                     onNavigateToLogin = {
+
+                        authViewModel.resetUiState()
 
                         navController.popBackStack()
                     }
@@ -277,7 +289,18 @@ fun AppNavigation(
 
                 ProfileScreen(
 
+                    currentUserName = currentName,
+
                     currentUserEmail = currentEmail,
+
+                    authUiState = authUiState,
+
+                    currentUserId = currentUserId,
+
+                    onUpdateProfile = { userId, nama ->
+
+                        authViewModel.updateProfile(userId, nama)
+                    },
 
                     onLogout = {
 

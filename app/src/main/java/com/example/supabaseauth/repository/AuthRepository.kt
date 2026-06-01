@@ -21,6 +21,8 @@ class AuthRepository {
 
         return try {
 
+            client.auth.clearSession()
+
             // LOGIN
             client.auth.signInWith(Email) {
 
@@ -35,22 +37,41 @@ class AuthRepository {
                 )
 
             // GET PROFILE
-            val profile = client
-                .from("profiles")
-                .select(
-                    Columns.list(
-                        "id",
-                        "nama",
-                        "role"
-                    )
-                ) {
+            val profile = try {
+                client
+                    .from("profiles")
+                    .select(
+                        Columns.list(
+                            "id",
+                            "nama",
+                            "email",
+                            "role"
+                        )
+                    ) {
 
-                    filter {
+                        filter {
 
-                        eq("id", userId)
+                            eq("id", userId)
+                        }
                     }
-                }
-                .decodeSingle<Profile>()
+                    .decodeSingle<Profile>()
+            } catch (e: Exception) {
+                val user = client.auth.currentUserOrNull()
+                    ?: return Result.failure(Exception("User tidak ditemukan"))
+
+                val fallbackProfile = Profile(
+                    id = userId,
+                    nama = user.email?.substringBefore("@"),
+                    email = user.email ?: email,
+                    role = "cashier"
+                )
+
+                client
+                    .from("profiles")
+                    .insert(fallbackProfile)
+
+                fallbackProfile
+            }
 
             Result.success(profile)
 
@@ -72,14 +93,16 @@ class AuthRepository {
 
         return try {
 
-            client.auth.signUpWith(Email) {
+            client.auth.clearSession()
+
+            val user = client.auth.signUpWith(Email) {
 
                 this.email = email
                 this.password = password
             }
 
             // GET USER ID
-            val userId = client.auth.currentUserOrNull()?.id
+            val userId = user?.id ?: client.auth.currentUserOrNull()?.id
                 ?: return Result.failure(
                     Exception("Register gagal")
                 )
@@ -92,6 +115,7 @@ class AuthRepository {
                     Profile(
                         id = userId,
                         nama = nama,
+                        email = email,
                         role = role
                     )
                 )
@@ -114,19 +138,6 @@ class AuthRepository {
                         eq("id", userId)
                     }
                 }
-
-            Result.success(Unit)
-
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-    suspend fun changePassword(newPassword: String): Result<Unit> {
-        return try {
-
-            client.auth.updateUser {
-                password = newPassword
-            }
 
             Result.success(Unit)
 

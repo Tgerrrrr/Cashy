@@ -14,22 +14,33 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.supabaseauth.viewmodel.AuthUiState
 
 @Composable
 fun ProfileScreen(
+    currentUserName: String?,
     currentUserEmail: String?,
+    currentUserId: String?,
+    authUiState: AuthUiState,
+    onUpdateProfile: (String, String) -> Unit,
     onLogout: () -> Unit
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     var showEditProfile by remember { mutableStateOf(false) }
-    var showChangePassword by remember { mutableStateOf(false) }
     var showAboutApp by remember { mutableStateOf(false) }
 
-    var name by remember { mutableStateOf(currentUserEmail?.substringBefore("@") ?: "User") }
+    var name by remember { mutableStateOf(currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User") }
     var email by remember { mutableStateOf(currentUserEmail ?: "") }
+    var profileError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentUserName, currentUserEmail) {
+        name = currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User"
+        email = currentUserEmail ?: ""
+    }
 
     val initial = name.firstOrNull()?.uppercaseChar() ?: 'U'
+    val isLoading = authUiState is AuthUiState.Loading
 
     Column(
         modifier = Modifier
@@ -76,10 +87,41 @@ fun ProfileScreen(
                     fontSize = 13.sp,
                     color = CashyColors.TextOnDark.copy(alpha = 0.7f)
                 )
+
+                if (isLoading) {
+                    Spacer(Modifier.height(10.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = CashyColors.TextOnDark,
+                        strokeWidth = 2.dp
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(20.dp))
+
+        when (authUiState) {
+            is AuthUiState.Error -> {
+                Text(
+                    text = authUiState.message,
+                    color = CashyColors.Error,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+            is AuthUiState.Success -> {
+                Text(
+                    text = authUiState.message,
+                    color = CashyColors.Primary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+            else -> Unit
+        }
 
         // ── MENU ─────────────────────────────
         Column(
@@ -91,12 +133,6 @@ fun ProfileScreen(
                 icon = Icons.Default.Person,
                 label = "Edit Profile",
                 onClick = { showEditProfile = true }
-            )
-
-            ProfileMenuItem(
-                icon = Icons.Default.Lock,
-                label = "Change Password",
-                onClick = { showChangePassword = true }
             )
 
             ProfileMenuItem(
@@ -145,13 +181,37 @@ fun ProfileScreen(
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email") }
+                        onValueChange = {},
+                        label = { Text("Email") },
+                        enabled = false
                     )
+                    profileError?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, color = CashyColors.Error, fontSize = 12.sp)
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showEditProfile = false }) {
+                TextButton(
+                    enabled = !isLoading,
+                    onClick = {
+                        val cleanedName = name.trim()
+
+                        when {
+                            currentUserId.isNullOrBlank() -> {
+                                profileError = "User belum login"
+                            }
+                            cleanedName.isBlank() -> {
+                                profileError = "Name tidak boleh kosong"
+                            }
+                            else -> {
+                                profileError = null
+                                onUpdateProfile(currentUserId, cleanedName)
+                                showEditProfile = false
+                            }
+                        }
+                    }
+                ) {
                     Text("Save")
                 }
             },
@@ -164,47 +224,7 @@ fun ProfileScreen(
     }
 
     // ─────────────────────────────────────────────
-    // CHANGE PASSWORD DIALOG
     // ─────────────────────────────────────────────
-    if (showChangePassword) {
-
-        var oldPass by remember { mutableStateOf("") }
-        var newPass by remember { mutableStateOf("") }
-
-        AlertDialog(
-            onDismissRequest = { showChangePassword = false },
-            title = { Text("Change Password") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = oldPass,
-                        onValueChange = { oldPass = it },
-                        label = { Text("Old Password") }
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newPass,
-                        onValueChange = { newPass = it },
-                        label = { Text("New Password") }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    // dummy validation
-                    showChangePassword = false
-                }) {
-                    Text("Update")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showChangePassword = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
     // ─────────────────────────────────────────────
     // ABOUT APP DIALOG
     // ─────────────────────────────────────────────

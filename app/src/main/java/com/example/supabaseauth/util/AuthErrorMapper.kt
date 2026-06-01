@@ -11,6 +11,15 @@ object AuthErrorMapper {
             msg.contains("invalid login credentials") ->
                 "Incorrect email or password."
 
+            msg.contains("otp") || msg.contains("nonce") || msg.contains("token") ->
+                "Verification code is invalid or expired."
+
+            msg.contains("session missing") || msg.contains("no session") || msg.contains("belum login") ->
+                "Session expired. Please login again."
+
+            msg.contains("weak password") || msg.contains("password") ->
+                message ?: "Password is too weak."
+
             msg.contains("user already registered") ->
                 "This email is already registered."
 
@@ -30,7 +39,7 @@ object AuthErrorMapper {
                 "Unknown error occurred."
 
             else ->
-                "Something went wrong. Please try again."
+                message ?: "Something went wrong. Please try again."
         }
     }
 }

@@ -48,6 +48,9 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmVisible by remember { mutableStateOf(false) }
 
+    val errorMessage = (authUiState as? AuthUiState.Error)?.message
+    val successMessage = (authUiState as? AuthUiState.Success)?.message
+
     val isValid =
         nama.isNotBlank() &&
                 email.contains("@") &&
@@ -112,7 +115,10 @@ fun RegisterScreen(
 
         TextField(
             value = nama,
-            onValueChange = { nama = it },
+            onValueChange = {
+                nama = it
+                authViewModel.resetUiState()
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             textStyle = TextStyle(
@@ -143,7 +149,10 @@ fun RegisterScreen(
 
         TextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                authViewModel.resetUiState()
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             textStyle = TextStyle(
@@ -174,7 +183,10 @@ fun RegisterScreen(
 
         TextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                authViewModel.resetUiState()
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation =
@@ -222,7 +234,10 @@ fun RegisterScreen(
 
         TextField(
             value = confirmPassword,
-            onValueChange = { confirmPassword = it },
+            onValueChange = {
+                confirmPassword = it
+                authViewModel.resetUiState()
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation =
@@ -256,7 +271,27 @@ fun RegisterScreen(
             )
         )
 
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(16.dp))
+
+        errorMessage?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        successMessage?.let {
+            Text(
+                text = it,
+                color = Blue,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        Spacer(Modifier.height(6.dp))
 
         // ───── REGISTER BUTTON ─────
         Button(

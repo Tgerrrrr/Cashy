@@ -34,6 +34,9 @@ class AuthViewModel : ViewModel() {
     private val _currentUserEmail = MutableStateFlow<String?>(null)
     val currentUserEmail: StateFlow<String?> = _currentUserEmail
 
+    private val _currentUserName = MutableStateFlow<String?>(null)
+    val currentUserName: StateFlow<String?> = _currentUserName
+
     private val _currentUserRole = MutableStateFlow("cashier")
     val currentUserRole: StateFlow<String> = _currentUserRole
 
@@ -64,10 +67,27 @@ class AuthViewModel : ViewModel() {
                     return@launch
                 }
 
+                try {
+                    withContext(Dispatchers.IO) {
+                        client.auth.retrieveUserForCurrentSession(updateSession = true)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AUTH", "stored session invalid: ${e.message}")
+                    withContext(Dispatchers.IO) {
+                        client.auth.clearSession()
+                    }
+                    _currentUserId.value = null
+                    _currentUserEmail.value = null
+                    _currentUserName.value = null
+                    _currentUserRole.value = "cashier"
+                    _authCheckState.value = AuthCheckState.LoggedOut
+                    return@launch
+                }
+
                 val profile = try {
                     client
                         .from("profiles")
-                        .select(Columns.list("id", "nama", "role")) {
+                        .select(Columns.list("id", "nama", "email", "role")) {
                             filter { eq("id", user.id) }
                         }
                         .decodeSingle<Profile>()
@@ -77,7 +97,8 @@ class AuthViewModel : ViewModel() {
                 }
 
                 _currentUserId.value = user.id
-                _currentUserEmail.value = user.email
+                _currentUserEmail.value = profile?.email ?: user.email
+                _currentUserName.value = profile?.nama
                 _currentUserRole.value = profile?.role ?: "cashier"
 
                 _authCheckState.value = AuthCheckState.LoggedIn
@@ -105,7 +126,8 @@ class AuthViewModel : ViewModel() {
                     val user = client.auth.currentUserOrNull()
 
                     _currentUserId.value = profile.id
-                    _currentUserEmail.value = user?.email
+                    _currentUserEmail.value = profile.email ?: user?.email
+                    _currentUserName.value = profile.nama
                     _currentUserRole.value = profile.role
 
                     _authUiState.value = AuthUiState.Success("Login successful")
@@ -134,6 +156,7 @@ class AuthViewModel : ViewModel() {
                 onSuccess = {
 
                     _currentUserEmail.value = email
+                    _currentUserName.value = nama
                     _currentUserRole.value = "cashier"
 
                     _authUiState.value = AuthUiState.Success("Account created successfully")
@@ -161,6 +184,7 @@ class AuthViewModel : ViewModel() {
             result.fold(
                 onSuccess = {
 
+                    _currentUserName.value = nama
                     _authUiState.value = AuthUiState.Success("Profile updated")
 
                     // refresh session data
@@ -177,28 +201,7 @@ class AuthViewModel : ViewModel() {
     }
 
     // ─────────────────────────────
-    // CHANGE PASSWORD
     // ─────────────────────────────
-    fun changePassword(newPassword: String) {
-        viewModelScope.launch {
-
-            _authUiState.value = AuthUiState.Loading
-
-            val result = repository.changePassword(newPassword)
-
-            result.fold(
-                onSuccess = {
-                    _authUiState.value = AuthUiState.Success("Password changed successfully")
-                },
-                onFailure = {
-                    _authUiState.value = AuthUiState.Error(
-                        AuthErrorMapper.map(it.message)
-                    )
-                }
-            )
-        }
-    }
-
     // ─────────────────────────────
     // LOGOUT
     // ─────────────────────────────
@@ -213,6 +216,7 @@ class AuthViewModel : ViewModel() {
 
                 _currentUserId.value = null
                 _currentUserEmail.value = null
+                _currentUserName.value = null
                 _currentUserRole.value = "cashier"
 
                 _authUiState.value = AuthUiState.Idle
