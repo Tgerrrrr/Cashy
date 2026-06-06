@@ -10,7 +10,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,21 +26,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.supabaseauth.viewmodel.AuthCheckState
 import com.example.supabaseauth.viewmodel.AuthViewModel
 
-/* =========================================================
-   COLORS
-========================================================= */
-
-private val NavBg = Color(0xFFFFFFFF)
-private val NavPrimary = Color(0xFF1A3C40)
+// ── colors (same as before) ───────────────────────────────────────────────────
+private val NavBg        = Color(0xFFFFFFFF)
+private val NavPrimary   = Color(0xFF1A3C40)
 private val NavUnselected = Color(0xFF90A4AE)
 private val NavIndicator = Color(0xFFE0F2F1)
-private val ScaffoldBg = Color(0xFFF4F6F8)
+private val ScaffoldBg   = Color(0xFFF4F6F8)
 
-/* =========================================================
-   BOTTOM NAVIGATION ROUTES
-========================================================= */
-
-private val bottomNavRoutes = setOf(
+// ── which admin routes show the bottom bar ────────────────────────────────────
+private val adminBottomNavRoutes = setOf(
     Screen.Home.route,
     Screen.Transaction.route,
     Screen.Product.route,
@@ -49,100 +42,48 @@ private val bottomNavRoutes = setOf(
     Screen.Profile.route
 )
 
-/* =========================================================
-   APP NAVIGATION
-========================================================= */
+// =============================================================================
+// ROOT COMPOSABLE
+// =============================================================================
 
 @Composable
 fun AppNavigation(
     navController: NavHostController,
     authViewModel: AuthViewModel
 ) {
+    val authCheckState by authViewModel.authCheckState.collectAsStateWithLifecycle()
+    val authUiState    by authViewModel.authUiState.collectAsStateWithLifecycle()
+    val currentEmail   by authViewModel.currentUserEmail.collectAsStateWithLifecycle()
+    val currentName    by authViewModel.currentUserName.collectAsStateWithLifecycle()
+    val currentUserId  by authViewModel.currentUserId.collectAsStateWithLifecycle()
 
-    /* =====================================================
-       STATES
-    ===================================================== */
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    val authCheckState by authViewModel
-        .authCheckState
-        .collectAsStateWithLifecycle()
+    // Show bottom bar only on admin pages
+    val showBottomBar = currentRoute in adminBottomNavRoutes
 
-    val authUiState by authViewModel
-        .authUiState
-        .collectAsStateWithLifecycle()
-
-    val currentEmail by authViewModel
-        .currentUserEmail
-        .collectAsStateWithLifecycle()
-
-    val currentName by authViewModel
-        .currentUserName
-        .collectAsStateWithLifecycle()
-
-    val currentUserId by authViewModel
-        .currentUserId
-        .collectAsStateWithLifecycle()
-
-    val navBackStackEntry by navController
-        .currentBackStackEntryAsState()
-
-    val currentRoute =
-        navBackStackEntry
-            ?.destination
-            ?.route
-
-    val showBottomBar =
-        currentRoute in bottomNavRoutes
-
-    /* =====================================================
-       LOADING SCREEN
-    ===================================================== */
-
+    // ── loading splash ────────────────────────────────────────────────────────
     if (authCheckState == AuthCheckState.Checking) {
-
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-
-            CircularProgressIndicator(
-                color = NavPrimary
-            )
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = NavPrimary)
         }
-
         return
     }
 
-    /* =====================================================
-       MAIN SCAFFOLD
-    ===================================================== */
-
+    // ── scaffold (admin has bottom bar; cashier screens don't need it) ────────
     Scaffold(
-
         containerColor = ScaffoldBg,
-
         bottomBar = {
-
             if (showBottomBar) {
-
                 CashyBottomNav(
-
                     currentRoute = currentRoute,
-
                     onNavigate = { route ->
-
                         if (currentRoute != route) {
-
                             navController.navigate(route) {
-
                                 launchSingleTop = true
-
                                 restoreState = true
-
-                                popUpTo(
-                                    navController.graph.startDestinationId
-                                ) {
-
+                                popUpTo(navController.graph.startDestinationId) {
                                     saveState = true
                                 }
                             }
@@ -151,258 +92,152 @@ fun AppNavigation(
                 )
             }
         }
-
     ) { innerPadding ->
 
-        /* =================================================
-           NAV HOST
-        ================================================= */
-
         NavHost(
-
-            navController = navController,
-
+            navController   = navController,
             startDestination = Screen.Login.route,
-
-            modifier = Modifier.padding(innerPadding)
-
+            modifier         = Modifier.padding(innerPadding)
         ) {
 
-            /* =============================================
-               LOGIN
-            ============================================= */
-
+            // ── LOGIN ─────────────────────────────────────────────────────────
             composable(Screen.Login.route) {
-
                 LoginScreen(
-
                     authViewModel = authViewModel,
-
-                    onSignup = {
-
-                        authViewModel.resetUiState()
-
-                        navController.navigate(
-                            Screen.Register.route
-                        )
-                    }
+                    onSignup = {} // ← intentionally empty: no signup from login
                 )
             }
 
-            /* =============================================
-               REGISTER
-            ============================================= */
-
+            // ── REGISTER (admin-only, reached from ProfileScreen) ─────────────
             composable(Screen.Register.route) {
-
                 RegisterScreen(
-
                     authViewModel = authViewModel,
-
-                    authUiState = authUiState,
-
+                    authUiState   = authUiState,
                     onNavigateToLogin = {
-
                         authViewModel.resetUiState()
-
                         navController.popBackStack()
                     }
                 )
             }
 
-            /* =============================================
-               HOME
-            ============================================= */
+            // ══════════════════════════════════════════════════════════════════
+            // ADMIN SCREENS
+            // ══════════════════════════════════════════════════════════════════
 
             composable(Screen.Home.route) {
-
                 HomeScreen(
-
                     authViewModel = authViewModel,
-
                     navController = navController,
-
-                    onLogout = {
-
-                        authViewModel.logout()
-                    }
+                    onLogout      = { authViewModel.logout() }
                 )
             }
-
-            /* =============================================
-               TRANSACTION
-            ============================================= */
 
             composable(Screen.Transaction.route) {
-
                 TransactionScreen(
-
-                    onAddTransaction = {
-
-                        navController.navigate(
-                            Screen.AddTransaction.route
-                        )
-                    }
+                    onAddTransaction = { navController.navigate(Screen.AddTransaction.route) }
                 )
             }
-
-            /* =============================================
-               ADD TRANSACTION
-            ============================================= */
 
             composable(Screen.AddTransaction.route) {
-
                 AddTransactionScreen(
-
-                    onBack = {
-
-                        navController.popBackStack()
-                    }
+                    onBack = { navController.popBackStack() }
                 )
             }
-
-            /* =============================================
-               PRODUCT
-            ============================================= */
 
             composable(Screen.Product.route) {
-
-                ProductScreen(
-                    navController = navController
-                )
+                ProductScreen(navController = navController)
             }
 
-            /* =============================================
-               HISTORY
-            ============================================= */
-
             composable(Screen.History.route) {
-
                 HistoryScreen()
             }
 
-            /* =============================================
-               PROFILE
-            ============================================= */
-
             composable(Screen.Profile.route) {
-
                 ProfileScreen(
-
-                    currentUserName = currentName,
-
+                    currentUserName  = currentName,
                     currentUserEmail = currentEmail,
-
-                    authUiState = authUiState,
-
-                    currentUserId = currentUserId,
-
-                    onUpdateProfile = { userId, nama ->
-
-                        authViewModel.updateProfile(userId, nama)
-                    },
-
-                    onLogout = {
-
-                        authViewModel.logout()
+                    authUiState      = authUiState,
+                    currentUserId    = currentUserId,
+                    onUpdateProfile  = { userId, nama -> authViewModel.updateProfile(userId, nama) },
+                    onLogout         = { authViewModel.logout() },
+                    onCreateCashier  = {
+                        authViewModel.resetUiState()
+                        navController.navigate(Screen.Register.route)
                     }
                 )
             }
 
-            /* =============================================
-               EXTRA SCREENS
-            ============================================= */
-
-            composable(Screen.Customer.route) {
-
-                CustomerScreen()
-            }
-
-            composable(Screen.Cash.route) {
-
-                CashScreen()
-            }
-
-            composable(Screen.Expense.route) {
-
-                ExpenseScreen()
-            }
-
-            composable(Screen.Sales.route) {
-
-                SalesScreen()
-            }
-
-            /* =============================================
-               MANAGE PRODUCT
-            ============================================= */
+            composable(Screen.Customer.route)  { CustomerScreen() }
+            composable(Screen.Cash.route)      { CashScreen() }
+            composable(Screen.Expense.route)   { ExpenseScreen() }
+            composable(Screen.Sales.route)     { SalesScreen() }
 
             composable(
                 route = "manage_product/{productId}"
             ) { backStackEntry ->
-
-                val productId =
-                    backStackEntry
-                        .arguments
-                        ?.getString("productId")
-
+                val productId = backStackEntry.arguments?.getString("productId")
                 ManageProductScreen(
-
                     navController = navController,
+                    productId     = if (productId == "new") null else productId
+                )
+            }
 
-                    productId =
-                        if (productId == "new") {
-                            null
-                        } else {
-                            productId
-                        }
+            // ══════════════════════════════════════════════════════════════════
+            // CASHIER SCREENS
+            // ══════════════════════════════════════════════════════════════════
+
+            composable(Screen.CashierHome.route) {
+                CashierDashboardScreen(
+                    onNavigateToKasir  = { navController.navigate(Screen.CashierKasir.route) },
+                    onNavigateToBarang = { navController.navigate(Screen.CashierBarang.route) },
+                    onNavigateToKas    = { navController.navigate(Screen.CashierKas.route) },
+                    onLogout           = { authViewModel.logout() }
+                )
+            }
+
+            composable(Screen.CashierKasir.route) {
+                CashierKasirScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.CashierBarang.route) {
+                CashierBarangScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.CashierKas.route) {
+                CashierKasScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }
 
-        /* =================================================
-           AUTH NAVIGATION HANDLER
-        ================================================= */
-
+        // ── auth navigation handler ───────────────────────────────────────────
         LaunchedEffect(authCheckState) {
+            when (val state = authCheckState) {
 
-            when (authCheckState) {
+                is AuthCheckState.LoggedIn -> {
+                    val role = state.role
+                    val destination = if (role == "cashier") {
+                        Screen.CashierHome.route
+                    } else {
+                        Screen.Home.route
+                    }
 
-                AuthCheckState.LoggedIn -> {
-
-                    if (currentRoute != Screen.Home.route) {
-
-                        navController.navigate(
-                            Screen.Home.route
-                        ) {
-
-                            popUpTo(
-                                Screen.Login.route
-                            ) {
-
-                                inclusive = true
-                            }
-
+                    if (currentRoute != destination) {
+                        navController.navigate(destination) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
                             launchSingleTop = true
                         }
                     }
                 }
 
-                AuthCheckState.LoggedOut -> {
-
+                is AuthCheckState.LoggedOut -> {
                     if (currentRoute != Screen.Login.route) {
-
-                        navController.navigate(
-                            Screen.Login.route
-                        ) {
-
-                            popUpTo(
-                                navController.graph.startDestinationId
-                            ) {
-
-                                inclusive = true
-                            }
-
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
                             launchSingleTop = true
                         }
                     }
@@ -414,78 +249,37 @@ fun AppNavigation(
     }
 }
 
-/* =========================================================
-   BOTTOM NAVIGATION BAR
-========================================================= */
+// =============================================================================
+// ADMIN BOTTOM NAV
+// =============================================================================
 
 @Composable
 fun CashyBottomNav(
     currentRoute: String?,
     onNavigate: (String) -> Unit
 ) {
-
     val items = listOf(
-
         BottomNavItem.Home,
-
         BottomNavItem.Transaction,
-
         BottomNavItem.Product,
-
         BottomNavItem.History,
-
         BottomNavItem.Profile
     )
 
-    NavigationBar(
-
-        containerColor = NavBg,
-
-        tonalElevation = 0.dp
-
-    ) {
-
+    NavigationBar(containerColor = NavBg, tonalElevation = 0.dp) {
         items.forEach { item ->
-
-            val selected =
-                currentRoute == item.route
-
+            val selected = currentRoute == item.route
             NavigationBarItem(
-
                 selected = selected,
-
-                onClick = {
-
-                    onNavigate(item.route)
-                },
-
-                icon = {
-
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.label
-                    )
-                },
-
-                label = {
-
-                    Text(
-                        text = item.label,
-                        fontSize = 10.sp
-                    )
-                },
-
-                colors = NavigationBarItemDefaults.colors(
-
-                    selectedIconColor = NavPrimary,
-
-                    selectedTextColor = NavPrimary,
-
+                onClick  = { onNavigate(item.route) },
+                icon     = { Icon(imageVector = item.icon, contentDescription = item.label) },
+                label    = { Text(text = item.label, fontSize = 10.sp) },
+                colors   = NavigationBarItemDefaults.colors(
+                    selectedIconColor   = NavPrimary,
+                    selectedTextColor   = NavPrimary,
                     unselectedIconColor = NavUnselected,
-
                     unselectedTextColor = NavUnselected,
-
-                    indicatorColor = NavIndicator
+                    indicatorColor      = NavIndicator
                 )
             )
         }

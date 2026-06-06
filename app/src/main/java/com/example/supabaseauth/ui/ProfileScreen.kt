@@ -23,23 +23,23 @@ fun ProfileScreen(
     currentUserId: String?,
     authUiState: AuthUiState,
     onUpdateProfile: (String, String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onCreateCashier: () -> Unit          // ← new
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showEditProfile  by remember { mutableStateOf(false) }
+    var showAboutApp     by remember { mutableStateOf(false) }
 
-    var showEditProfile by remember { mutableStateOf(false) }
-    var showAboutApp by remember { mutableStateOf(false) }
-
-    var name by remember { mutableStateOf(currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User") }
-    var email by remember { mutableStateOf(currentUserEmail ?: "") }
+    var name         by remember { mutableStateOf(currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User") }
+    var email        by remember { mutableStateOf(currentUserEmail ?: "") }
     var profileError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentUserName, currentUserEmail) {
-        name = currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User"
+        name  = currentUserName ?: currentUserEmail?.substringBefore("@") ?: "User"
         email = currentUserEmail ?: ""
     }
 
-    val initial = name.firstOrNull()?.uppercaseChar() ?: 'U'
+    val initial   = name.firstOrNull()?.uppercaseChar() ?: 'U'
     val isLoading = authUiState is AuthUiState.Loading
 
     Column(
@@ -75,18 +75,8 @@ fun ProfileScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                Text(
-                    text = name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CashyColors.TextOnDark
-                )
-
-                Text(
-                    text = email,
-                    fontSize = 13.sp,
-                    color = CashyColors.TextOnDark.copy(alpha = 0.7f)
-                )
+                Text(name,  fontSize = 18.sp, fontWeight = FontWeight.Bold, color = CashyColors.TextOnDark)
+                Text(email, fontSize = 13.sp, color = CashyColors.TextOnDark.copy(alpha = 0.7f))
 
                 if (isLoading) {
                     Spacer(Modifier.height(10.dp))
@@ -130,14 +120,21 @@ fun ProfileScreen(
         ) {
 
             ProfileMenuItem(
-                icon = Icons.Default.Person,
-                label = "Edit Profile",
+                icon    = Icons.Default.Person,
+                label   = "Edit Profile",
                 onClick = { showEditProfile = true }
             )
 
+            // ← NEW: Create Cashier Account button
             ProfileMenuItem(
-                icon = Icons.Default.Info,
-                label = "About App",
+                icon    = Icons.Default.PersonAdd,
+                label   = "Buat Akun Kasir",
+                onClick = onCreateCashier
+            )
+
+            ProfileMenuItem(
+                icon    = Icons.Default.Info,
+                label   = "About App",
                 onClick = { showAboutApp = true }
             )
         }
@@ -154,7 +151,7 @@ fun ProfileScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CashyColors.Error,
-                    contentColor = CashyColors.TextOnDark
+                    contentColor   = CashyColors.TextOnDark
                 )
             ) {
                 Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
@@ -164,9 +161,7 @@ fun ProfileScreen(
         }
     }
 
-    // ─────────────────────────────────────────────
-    // EDIT PROFILE DIALOG
-    // ─────────────────────────────────────────────
+    // ── EDIT PROFILE DIALOG ───────────────────────────────────────────────────
     if (showEditProfile) {
         AlertDialog(
             onDismissRequest = { showEditProfile = false },
@@ -174,16 +169,16 @@ fun ProfileScreen(
             text = {
                 Column {
                     OutlinedTextField(
-                        value = name,
+                        value         = name,
                         onValueChange = { name = it },
-                        label = { Text("Name") }
+                        label         = { Text("Name") }
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = email,
+                        value         = email,
                         onValueChange = {},
-                        label = { Text("Email") },
-                        enabled = false
+                        label         = { Text("Email") },
+                        enabled       = false
                     )
                     profileError?.let {
                         Spacer(Modifier.height(8.dp))
@@ -196,14 +191,9 @@ fun ProfileScreen(
                     enabled = !isLoading,
                     onClick = {
                         val cleanedName = name.trim()
-
                         when {
-                            currentUserId.isNullOrBlank() -> {
-                                profileError = "User belum login"
-                            }
-                            cleanedName.isBlank() -> {
-                                profileError = "Name tidak boleh kosong"
-                            }
+                            currentUserId.isNullOrBlank() -> profileError = "User belum login"
+                            cleanedName.isBlank()         -> profileError = "Name tidak boleh kosong"
                             else -> {
                                 profileError = null
                                 onUpdateProfile(currentUserId, cleanedName)
@@ -211,60 +201,40 @@ fun ProfileScreen(
                             }
                         }
                     }
-                ) {
-                    Text("Save")
-                }
+                ) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { showEditProfile = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showEditProfile = false }) { Text("Cancel") }
             }
         )
     }
 
-    // ─────────────────────────────────────────────
-    // ─────────────────────────────────────────────
-    // ─────────────────────────────────────────────
-    // ABOUT APP DIALOG
-    // ─────────────────────────────────────────────
+    // ── ABOUT APP DIALOG ──────────────────────────────────────────────────────
     if (showAboutApp) {
         AlertDialog(
             onDismissRequest = { showAboutApp = false },
-            title = { Text("About App") },
-            text = {
-                Text(
-                    "Cashy is a modern inventory and sales management app designed to help small businesses track products, sales, and customers efficiently. Version 1.0.0 (Demo Build)."
-                )
-            },
+            title   = { Text("About App") },
+            text    = { Text("Cashy is a modern inventory and sales management app designed to help small businesses track products, sales, and customers efficiently. Version 1.0.0 (Demo Build).") },
             confirmButton = {
-                TextButton(onClick = { showAboutApp = false }) {
-                    Text("Close")
-                }
+                TextButton(onClick = { showAboutApp = false }) { Text("Close") }
             }
         )
     }
 
-    // ─────────────────────────────────────────────
-    // LOGOUT DIALOG
-    // ─────────────────────────────────────────────
+    // ── LOGOUT DIALOG ────────────────────────────────────────────────────────
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout?") },
-            text = { Text("Are you sure you want to logout from this account?") },
+            title   = { Text("Logout?") },
+            text    = { Text("Are you sure you want to logout from this account?") },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
                     onLogout()
-                }) {
-                    Text("Logout")
-                }
+                }) { Text("Logout") }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -277,10 +247,10 @@ private fun ProfileMenuItem(
     onClick: () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape  = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = CashyColors.Surface),
         modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        onClick  = onClick
     ) {
         Row(
             modifier = Modifier

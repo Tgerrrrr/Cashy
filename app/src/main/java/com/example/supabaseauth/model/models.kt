@@ -8,7 +8,7 @@ data class Profile(
     val id: String,
     val nama: String? = null,
     val email: String? = null,
-    val role: String = "cashier"
+    val role: String = "admin"
 )
 
 @Serializable

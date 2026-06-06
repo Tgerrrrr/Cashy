@@ -37,7 +37,7 @@ class AuthViewModel : ViewModel() {
     private val _currentUserName = MutableStateFlow<String?>(null)
     val currentUserName: StateFlow<String?> = _currentUserName
 
-    private val _currentUserRole = MutableStateFlow("cashier")
+    private val _currentUserRole = MutableStateFlow("admin")
     val currentUserRole: StateFlow<String> = _currentUserRole
 
     private val _currentUserId = MutableStateFlow<String?>(null)
@@ -79,7 +79,7 @@ class AuthViewModel : ViewModel() {
                     _currentUserId.value = null
                     _currentUserEmail.value = null
                     _currentUserName.value = null
-                    _currentUserRole.value = "cashier"
+                    _currentUserRole.value = "admin"
                     _authCheckState.value = AuthCheckState.LoggedOut
                     return@launch
                 }
@@ -99,9 +99,9 @@ class AuthViewModel : ViewModel() {
                 _currentUserId.value = user.id
                 _currentUserEmail.value = profile?.email ?: user.email
                 _currentUserName.value = profile?.nama
-                _currentUserRole.value = profile?.role ?: "cashier"
+                _currentUserRole.value = profile?.role ?: "admin"
 
-                _authCheckState.value = AuthCheckState.LoggedIn
+                _authCheckState.value = AuthCheckState.LoggedIn(_currentUserRole.value)
 
             } catch (e: Exception) {
                 Log.e("AUTH", "session error: ${e.message}")
@@ -131,7 +131,7 @@ class AuthViewModel : ViewModel() {
                     _currentUserRole.value = profile.role
 
                     _authUiState.value = AuthUiState.Success("Login successful")
-                    _authCheckState.value = AuthCheckState.LoggedIn
+                    _authCheckState.value = AuthCheckState.LoggedIn(_currentUserRole.value)
                 },
                 onFailure = {
                     _authUiState.value = AuthUiState.Error(
@@ -150,17 +150,17 @@ class AuthViewModel : ViewModel() {
 
             _authUiState.value = AuthUiState.Loading
 
-            val result = repository.register(email, password, nama, "cashier")
+            val result = repository.register(email, password, nama, "admin")
 
             result.fold(
                 onSuccess = {
 
                     _currentUserEmail.value = email
                     _currentUserName.value = nama
-                    _currentUserRole.value = "cashier"
+                    _currentUserRole.value = "admin"
 
                     _authUiState.value = AuthUiState.Success("Account created successfully")
-                    _authCheckState.value = AuthCheckState.LoggedIn
+                    _authCheckState.value = AuthCheckState.LoggedIn(_currentUserRole.value)
                 },
                 onFailure = {
                     _authUiState.value = AuthUiState.Error(
@@ -217,7 +217,7 @@ class AuthViewModel : ViewModel() {
                 _currentUserId.value = null
                 _currentUserEmail.value = null
                 _currentUserName.value = null
-                _currentUserRole.value = "cashier"
+                _currentUserRole.value = "admin"
 
                 _authUiState.value = AuthUiState.Idle
                 _authCheckState.value = AuthCheckState.LoggedOut

@@ -3,6 +3,7 @@ package com.example.supabaseauth.ui
 import androidx.compose.ui.graphics.Color
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.supabaseauth.ui.formatRupiah
 
 // ─────────────────────────────────────────────
 // CASHY COLOR PALETTE  (sesuai Figma)

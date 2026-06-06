@@ -1,10 +1,6 @@
 package com.example.supabaseauth.ui
 
-import android.R.attr.scaleX
-import android.R.attr.scaleY
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,333 +11,173 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.supabaseauth.R
 import com.example.supabaseauth.viewmodel.AuthUiState
 import com.example.supabaseauth.viewmodel.AuthViewModel
 
-// ───── COLORS ─────
-private val Black = Color(0xFF181725)
-private val Gray = Color(0xFF7C7C7C)
-private val Blue = Color(0xFF00657E)
+private val Black     = Color(0xFF181725)
+private val Gray      = Color(0xFF7C7C7C)
+private val Blue      = Color(0xFF00657E)
 private val WhiteText = Color(0xFFF9F9F9)
 
 @Composable
 fun RegisterScreen(
     authViewModel: AuthViewModel,
     authUiState: AuthUiState,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit          // ← goes back to Profile/admin, not login page
 ) {
+    var nama           by remember { mutableStateOf("") }
+    var email          by remember { mutableStateOf("") }
+    var password       by remember { mutableStateOf("") }
+    var showPassword   by remember { mutableStateOf(false) }
 
-    var nama by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    // Clear state when leaving
+    LaunchedEffect(Unit) { authViewModel.resetUiState() }
 
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmVisible by remember { mutableStateOf(false) }
+    // On success, go back automatically after short delay so admin sees the message
+    LaunchedEffect(authUiState) {
+        if (authUiState is AuthUiState.Success) {
+            kotlinx.coroutines.delay(1500)
+            onNavigateToLogin()
+        }
+    }
 
-    val errorMessage = (authUiState as? AuthUiState.Error)?.message
-    val successMessage = (authUiState as? AuthUiState.Success)?.message
+    val isLoading = authUiState is AuthUiState.Loading
 
-    val isValid =
-        nama.isNotBlank() &&
-                email.contains("@") &&
-                password.length >= 8 &&
-                password == confirmPassword
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(horizontal = 24.dp)
     ) {
-
-
-        /* ===========LOGO=========== */
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
-                contentDescription = "Logo",
-                modifier = Modifier
-                    .size(120.dp)          // keep layout space small
-                    .graphicsLayer {
-                        scaleX = 1.5f      // visually bigger
-                        scaleY = 1.5f
-                    }
-            )
-        }
-
-
-        // ───── TITLE ─────
-        Text(
-            text = "Register",
-            color = Black,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "Create your new account",
-            color = Gray,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        // ───── NAME ─────
-        Text(
-            text = "Name",
-            color = Gray,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        TextField(
-            value = nama,
-            onValueChange = {
-                nama = it
-                authViewModel.resetUiState()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            textStyle = TextStyle(
-                color = Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Blue,
-                unfocusedIndicatorColor = Gray,
-                cursorColor = Blue
-            )
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        // ───── EMAIL ─────
-        Text(
-            text = "Email",
-            color = Gray,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        TextField(
-            value = email,
-            onValueChange = {
-                email = it
-                authViewModel.resetUiState()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            textStyle = TextStyle(
-                color = Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Blue,
-                unfocusedIndicatorColor = Gray,
-                cursorColor = Blue
-            )
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        // ───── PASSWORD ─────
-        Text(
-            text = "Password",
-            color = Gray,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        TextField(
-            value = password,
-            onValueChange = {
-                password = it
-                authViewModel.resetUiState()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation =
-                if (passwordVisible) VisualTransformation.None
-                else PasswordVisualTransformation(),
-
-            trailingIcon = {
-                Icon(
-                    imageVector =
-                        if (passwordVisible) Icons.Default.Visibility
-                        else Icons.Default.VisibilityOff,
-                    contentDescription = null,
-                    modifier = Modifier.clickable {
-                        passwordVisible = !passwordVisible
-                    }
-                )
-            },
-
-            textStyle = TextStyle(
-                color = Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Blue,
-                unfocusedIndicatorColor = Gray,
-                cursorColor = Blue
-            )
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        // ───── CONFIRM PASSWORD ─────
-        Text(
-            text = "Confirm Password",
-            color = Gray,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        TextField(
-            value = confirmPassword,
-            onValueChange = {
-                confirmPassword = it
-                authViewModel.resetUiState()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation =
-                if (confirmVisible) VisualTransformation.None
-                else PasswordVisualTransformation(),
-
-            trailingIcon = {
-                Icon(
-                    imageVector =
-                        if (confirmVisible) Icons.Default.Visibility
-                        else Icons.Default.VisibilityOff,
-                    contentDescription = null,
-                    modifier = Modifier.clickable {
-                        confirmVisible = !confirmVisible
-                    }
-                )
-            },
-
-            textStyle = TextStyle(
-                color = Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Blue,
-                unfocusedIndicatorColor = Gray,
-                cursorColor = Blue
-            )
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        errorMessage?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                fontSize = 14.sp
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
-        successMessage?.let {
-            Text(
-                text = it,
-                color = Blue,
-                fontSize = 14.sp
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Spacer(Modifier.height(6.dp))
-
-        // ───── REGISTER BUTTON ─────
-        Button(
-            onClick = {
-                authViewModel.register(email, password, nama)
-            },
-            enabled = isValid && authUiState !is AuthUiState.Loading,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp),
-            shape = RoundedCornerShape(30.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Blue
-            )
+                .padding(horizontal = 28.dp)
+                .align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (authUiState is AuthUiState.Loading) {
-                CircularProgressIndicator(color = WhiteText)
-            } else {
-                Text(
-                    text = "Register",
-                    color = WhiteText,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // ───── BACK TO LOGIN ─────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Already have an account? ",
-                color = Black,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
 
             Text(
-                text = "Login",
-                color = Blue,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clickable {
-                    onNavigateToLogin()
+                text = "Buat Akun Kasir",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Isi data berikut untuk membuat akun kasir baru",
+                fontSize = 13.sp,
+                color = Gray
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            // ── Nama ─────────────────────────────────────────────────────────
+            OutlinedTextField(
+                value         = nama,
+                onValueChange = { nama = it },
+                label         = { Text("Nama Kasir") },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // ── Email ─────────────────────────────────────────────────────────
+            OutlinedTextField(
+                value         = email,
+                onValueChange = { email = it },
+                label         = { Text("Email") },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // ── Password ──────────────────────────────────────────────────────
+            OutlinedTextField(
+                value         = password,
+                onValueChange = { password = it },
+                label         = { Text("Password") },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(12.dp),
+                visualTransformation = if (showPassword) VisualTransformation.None
+                else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            imageVector = if (showPassword) Icons.Default.VisibilityOff
+                            else Icons.Default.Visibility,
+                            contentDescription = null
+                        )
+                    }
                 }
             )
+
+            Spacer(Modifier.height(28.dp))
+
+            // ── Status messages ───────────────────────────────────────────────
+            when (authUiState) {
+                is AuthUiState.Error -> {
+                    Text(
+                        text  = authUiState.message,
+                        color = Color.Red,
+                        fontSize = 13.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+                is AuthUiState.Success -> {
+                    Text(
+                        text  = "✓ ${authUiState.message}",
+                        color = Blue,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+                else -> Unit
+            }
+
+            // ── Create button ─────────────────────────────────────────────────
+            Button(
+                onClick = {
+                    authViewModel.register(
+                        email    = email.trim(),
+                        password = password,
+                        nama     = nama.trim(),
+
+                    )
+                },
+                enabled  = !isLoading && nama.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape  = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = WhiteText
+                    )
+                } else {
+                    Text("Buat Akun", color = WhiteText, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            TextButton(onClick = onNavigateToLogin) {
+                Text("← Kembali", color = Blue)
+            }
         }
     }
 }
