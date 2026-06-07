@@ -6,17 +6,14 @@ import com.example.supabaseauth.model.Product
 import com.example.supabaseauth.model.Penjualan
 import com.example.supabaseauth.model.PenjualanItem
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
-// ── Insert models (only what we need to write) ────────────────────────────────
+// ── Insert models ─────────────────────────────────────────────────────────────
 
 @Serializable
 data class PenjualanInsert(
-    @SerialName("kas_id")      val kasId: String,
+    @SerialName("kas_id")       val kasId: String,
     @SerialName("pelanggan_id") val pelangganId: String? = null,
     val total: Double,
     @SerialName("jumlah_bayar") val jumlahBayar: Double,
@@ -43,7 +40,6 @@ data class PenjualanResponse(val id: String)
 class BarangRepository {
     private val supabase = SupabaseClientProvider.client
 
-    // Your table is "product" (not "produk")
     suspend fun getAllBarang(): List<Product> {
         return supabase
             .from("product")
@@ -86,14 +82,28 @@ class KasirRepository {
         supabase.from("penjualan_item").insert(items)
     }
 
-    // Uses the Supabase stored procedure — see SQL below
+    /**
+     * Decrements stock directly via PostgREST update — no RPC required.
+     * Reads current stok first, then writes (currentStok - qty) back.
+     */
     suspend fun kurangiStokProduk(produkId: String, qtyTerjual: Int) {
-        supabase.postgrest.rpc(
-            function   = "kurangi_stok_produk",
-            parameters = buildJsonObject {
-                put("p_produk_id", produkId)
-                put("p_qty", qtyTerjual)
+        // 1. Read current stock
+        val current = supabase
+            .from("product")
+            .select {
+                filter { eq("id", produkId) }
+                limit(1)
             }
-        )
+            .decodeSingleOrNull<Product>() ?: return
+
+        // 2. Write new stock value (never goes below 0)
+        val newStok = maxOf(0.0, current.stok - qtyTerjual)
+        supabase
+            .from("product")
+            .update({
+                set("stok", newStok)
+            }) {
+                filter { eq("id", produkId) }
+            }
     }
 }

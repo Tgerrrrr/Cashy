@@ -188,10 +188,10 @@ fun AppNavigation(
 
             composable(Screen.CashierHome.route) {
                 CashierDashboardScreen(
-                    onNavigateToKasir  = { navController.navigate(Screen.CashierKasir.route) },
-                    onNavigateToBarang = { navController.navigate(Screen.CashierBarang.route) },
-                    onNavigateToKas    = { navController.navigate(Screen.CashierKas.route) },
-                    onLogout           = { authViewModel.logout() }
+                    onNavigateToKasir     = { navController.navigate(Screen.CashierKasir.route) },
+                    onNavigateToBarang    = { navController.navigate(Screen.CashierBarang.route) },
+                    onNavigateToPelanggan = { navController.navigate(Screen.CashierPelanggan.route) },
+                    onLogout              = { authViewModel.logout() }
                 )
             }
 
@@ -207,8 +207,8 @@ fun AppNavigation(
                 )
             }
 
-            composable(Screen.CashierKas.route) {
-                CashierKasScreen(
+            composable(Screen.CashierPelanggan.route) {
+                CashierPelangganScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

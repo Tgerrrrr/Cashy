@@ -36,10 +36,10 @@ sealed class Screen(val route: String) {
     }
 
     // ── Cashier ───────────────────────────
-    object CashierHome   : Screen("cashier_home")
-    object CashierKasir  : Screen("cashier_kasir")
-    object CashierBarang : Screen("cashier_barang")
-    object CashierKas    : Screen("cashier_kas")
+    object CashierHome      : Screen("cashier_home")
+    object CashierKasir     : Screen("cashier_kasir")
+    object CashierBarang    : Screen("cashier_barang")
+    object CashierPelanggan : Screen("cashier_pelanggan")
 }
 
 // =========================================
