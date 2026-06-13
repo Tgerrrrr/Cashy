@@ -7,17 +7,37 @@ import com.example.supabaseauth.model.Kas
 import com.example.supabaseauth.model.KasLog
 import com.example.supabaseauth.model.Pelanggan
 import com.example.supabaseauth.model.Penjualan
-import com.example.supabaseauth.model.PenjualanUI
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+
+// Raw data class
+data class TransactionRaw(
+    val id: String,
+    val type: TransactionType,
+    val waktu: String,
+    val total: Double,
+    val status: String,
+    // Penjualan fields
+    val pelangganId: String? = null,
+    // KasLog fields
+    val kasId: String? = null,
+    val kasLogSumber: String? = null,
+    val kasLogPerubahan: Double? = null,
+    val kasLogKeterangan: String? = null
+)
+
+enum class TransactionType { PENJUALAN, KAS_LOG }
 
 sealed class TransactionState {
     object Loading : TransactionState()
     object Empty : TransactionState()
-    data class Success(val data: List<PenjualanUI>) : TransactionState()
+    data class Success(
+        val transactions: List<TransactionRaw>,
+        val pelangganMap: Map<String, String>,
+        val kasMap: Map<String, String>
+    ) : TransactionState()
     data class Error(val message: String) : TransactionState()
 }
 
@@ -29,11 +49,6 @@ class TransactionViewModel : ViewModel() {
         MutableStateFlow<TransactionState>(TransactionState.Loading)
 
     val state: StateFlow<TransactionState> = _state
-
-    private val _transactions =
-        MutableStateFlow<List<PenjualanUI>>(emptyList())
-
-    val transactions: StateFlow<List<PenjualanUI>> = _transactions
 
     init {
         loadAllTransactions()
@@ -67,100 +82,55 @@ class TransactionViewModel : ViewModel() {
                     .select()
                     .decodeList<KasLog>()
 
-                /* ==========================================
-                   SALES TRANSACTIONS
-                   ========================================== */
+                // Maps untuk lookup — screen yang pakai
+                val pelangganMap = pelanggan.associate { it.id to it.nama }
+                val kasMap = kasList.associate { it.id to it.nama }
 
                 val transaksiPenjualan = penjualan.map { trx ->
-
-                    val customerName =
-                        pelanggan.find {
-                            it.id == trx.pelanggan_id
-                        }?.nama ?: "Guest"
-
-                    PenjualanUI(
+                    TransactionRaw(
                         id = trx.id ?: "",
-                        pelangganNama = customerName,
+                        type = TransactionType.PENJUALAN,
                         waktu = trx.waktu,
                         total = trx.total,
                         status = trx.status,
-                        description = "Order #${(trx.id ?: "").take(8)}"
+                        pelangganId = trx.pelanggan_id
                     )
                 }
-
-                /* ==========================================
-                   CASH FLOW TRANSACTIONS
-                   ========================================== */
 
                 val transaksiKasLog = kasLogs.map { log ->
-
-                    val kasName =
-                        kasList.find {
-                            it.id == log.kas_id
-                        }?.nama ?: "Unknown Cash"
-
-                    val title = when (log.sumber.lowercase()) {
-
-                        "manual" -> {
-                            if (log.perubahan >= 0)
-                                "Income on $kasName"
-                            else
-                                "Expense from $kasName"
-                        }
-
-                        "penjualan" ->
-                            "Sales on $kasName"
-
-                        "pengeluaran" ->
-                            "Expense from $kasName"
-
-                        "pembatalan" ->
-                            "Refund on $kasName"
-
-                        else ->
-                            "Cash Activity on $kasName"
-                    }
-
-                    PenjualanUI(
+                    TransactionRaw(
                         id = log.id,
-                        pelangganNama = title,
+                        type = TransactionType.KAS_LOG,
                         waktu = log.created_at,
-                        total = abs(log.perubahan),
+                        total = kotlin.math.abs(log.perubahan),
                         status = "selesai",
-                        description = log.keterangan ?: "-"
+                        kasId = log.kas_id,
+                        kasLogSumber = log.sumber,
+                        kasLogPerubahan = log.perubahan,
+                        kasLogKeterangan = log.keterangan
                     )
                 }
 
-                /* ==========================================
-                   MERGE & SORT
-                   ========================================== */
+                val merged = (transaksiPenjualan + transaksiKasLog)
+                    .sortedByDescending { it.waktu }
 
-                val merged =
-                    (transaksiPenjualan + transaksiKasLog)
-                        .sortedByDescending { it.waktu }
-
-                _transactions.value = merged
-
-                _state.value =
-                    if (merged.isEmpty()) {
-                        TransactionState.Empty
-                    } else {
-                        TransactionState.Success(merged)
-                    }
+                _state.value = if (merged.isEmpty()) {
+                    TransactionState.Empty
+                } else {
+                    TransactionState.Success(
+                        transactions = merged,
+                        pelangganMap = pelangganMap as Map<String, String>,
+                        kasMap = kasMap as Map<String, String>
+                    )
+                }
 
             } catch (e: Exception) {
-
-                _transactions.value = emptyList()
-
-                _state.value =
-                    TransactionState.Error(
-                        e.message ?: "Failed to load transactions"
-                    )
+                _state.value = TransactionState.Error(
+                    e.message ?: "Failed to load transactions"
+                )
             }
         }
     }
 
-    fun refresh() {
-        loadAllTransactions()
-    }
+    fun refresh() = loadAllTransactions()
 }
