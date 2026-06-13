@@ -24,7 +24,7 @@ fun ProfileScreen(
     authUiState: AuthUiState,
     onUpdateProfile: (String, String) -> Unit,
     onLogout: () -> Unit,
-    onCreateCashier: () -> Unit          // ← new
+    onCreateCashier: () -> Unit
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showEditProfile  by remember { mutableStateOf(false) }

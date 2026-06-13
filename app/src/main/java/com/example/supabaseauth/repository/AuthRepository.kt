@@ -31,28 +31,14 @@ class AuthRepository {
             val userId = client.auth.currentUserOrNull()?.id
                 ?: return Result.failure(Exception("User tidak ditemukan"))
 
-            val profile = try {
-                client
-                    .from("profiles")
-                    .select(Columns.list("id", "nama", "email", "role")) {
-                        filter { eq("id", userId) }
-                    }
-                    .decodeSingle<Profile>()
-            } catch (e: Exception) {
-                val user = client.auth.currentUserOrNull()
-                    ?: return Result.failure(Exception("User tidak ditemukan"))
-
-                val fallbackProfile = Profile(
-                    id = userId,
-                    nama = user.email?.substringBefore("@"),
-                    email = user.email ?: email,
-                    role = "cashier"
-                )
-
-                client.from("profiles").insert(fallbackProfile)
-
-                fallbackProfile
-            }
+            val profile = client
+                .from("profiles")
+                .select(Columns.list("id", "nama", "email", "role")) {
+                    filter { eq("id", userId) }
+                }
+                .decodeList<Profile>()
+                .firstOrNull()
+                ?: return Result.failure(Exception("Profile tidak ditemukan"))
 
             Result.success(profile)
 
@@ -63,10 +49,6 @@ class AuthRepository {
 
     // =========================================
     // REGISTER
-    // Used by admin to create cashier accounts.
-    // IMPORTANT: After sign-up Supabase automatically signs in the new user,
-    // which would kick the admin out. We save the admin's session, create the
-    // account, then restore the admin session.
     // =========================================
     suspend fun register(
         email: String,
@@ -77,31 +59,53 @@ class AuthRepository {
 
         return try {
 
-            // 1. Save admin's current session token before creating new account
             val adminSession = client.auth.currentSessionOrNull()
 
-            // 2. Sign up the new cashier account
-            val user = client.auth.signUpWith(Email) {
-                this.email = email
-                this.password = password
+            val signUpResult = try {
+                client.auth.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                }
+            } catch (e: Exception) {
+                if (e.message?.contains("already", ignoreCase = true) == true ||
+                    e.message?.contains("registered", ignoreCase = true) == true) {
+                    null
+                } else {
+                    throw e
+                }
             }
 
-            val userId = user?.id
-                ?: return Result.failure(Exception("Register gagal: user id tidak ditemukan"))
+            val userId = signUpResult?.id
+                ?: client.auth.currentUserOrNull()?.id
+                ?: return Result.failure(Exception("Register gagal: tidak bisa mendapatkan user id"))
 
-            // 3. Insert profile for the new cashier
-            client.from("profiles").insert(
-                Profile(
-                    id = userId,
-                    nama = nama,
-                    email = email,
-                    role = role
+            // Insert profile
+            try {
+                client.from("profiles").insert(
+                    Profile(
+                        id    = userId,
+                        nama  = nama,
+                        email = email,
+                        role  = role
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                if (e.message?.contains("duplicate", ignoreCase = true) == true ||
+                    e.message?.contains("already exists", ignoreCase = true) == true) {
+                    client.from("profiles")
+                        .update(mapOf("nama" to nama, "role" to role)) {
+                            filter { eq("id", userId) }
+                        }
+                } else {
+                    throw e
+                }
+            }
 
-            // 4. Restore admin session so admin stays logged in
+            // Restore admin session
             if (adminSession != null) {
                 client.auth.importSession(adminSession)
+            } else {
+                client.auth.clearSession()
             }
 
             Result.success(Unit)
@@ -110,7 +114,6 @@ class AuthRepository {
             Result.failure(e)
         }
     }
-
     // =========================================
     // UPDATE PROFILE
     // =========================================

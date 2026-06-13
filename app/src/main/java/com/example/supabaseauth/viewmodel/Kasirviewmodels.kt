@@ -36,10 +36,8 @@ class KasirViewModel : ViewModel() {
     private val _keranjang    = MutableStateFlow<List<CartItem>>(emptyList())
     val keranjang: StateFlow<List<CartItem>> = _keranjang.asStateFlow()
 
-    // Auto-selected, never shown to cashier
     private var autoKasId: String = ""
 
-    // Kept for receipt display only
     private val _kasList = MutableStateFlow<List<Kas>>(emptyList())
     val kasList: StateFlow<List<Kas>> = _kasList.asStateFlow()
 

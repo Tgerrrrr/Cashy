@@ -108,7 +108,7 @@ fun HomeScreen(
             cashState = cashState,
             totalSaldo = totalSaldo,
             onAddTransaction = {
-                    navController.navigate(Screen.AddTransaction.route)
+                navController.navigate(Screen.AddTransaction.route)
             },
             onOpenHistory = {
                 navController.navigate(Screen.History.route)

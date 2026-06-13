@@ -49,7 +49,7 @@ private val KasirSubText   = Color(0xFF90A4AE)
 private val KasirDivider   = Color(0xFFECEFF1)
 
 // =============================================================================
-// CASHIER KASIR SCREEN  (main POS screen)
+// CASHIER KASIR SCREEN
 // =============================================================================
 
 @Composable
@@ -295,7 +295,7 @@ fun CashierKasirScreen(onNavigateBack: () -> Unit) {
 }
 
 // =============================================================================
-// CASHIER BARANG SCREEN  (admin-style)
+// CASHIER BARANG SCREEN
 // =============================================================================
 
 @Composable
@@ -432,7 +432,7 @@ fun CashierBarangScreen(onNavigateBack: () -> Unit) {
 }
 
 // =============================================================================
-// CASHIER PELANGGAN SCREEN  (replaces Daftar Kas)
+// CASHIER PELANGGAN SCREEN
 // =============================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -447,7 +447,6 @@ fun CashierPelangganScreen(onNavigateBack: () -> Unit) {
     var namaBaru      by remember { mutableStateOf("") }
     var noTelpBaru    by remember { mutableStateOf("") }
 
-    // Reset add dialog on success
     LaunchedEffect(addState) {
         if (addState is AddPelangganState.Success) {
             showAddDialog = false

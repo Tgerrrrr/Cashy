@@ -143,24 +143,22 @@ class AuthViewModel : ViewModel() {
     }
 
     // ─────────────────────────────
-    // REGISTER
+    // REGISTER KASIR
     // ─────────────────────────────
-    fun register(email: String, password: String, nama: String) {
+    fun registerKasir(email: String, password: String, nama: String) {
         viewModelScope.launch {
-
             _authUiState.value = AuthUiState.Loading
 
-            val result = repository.register(email, password, nama, "admin")
+            val result = repository.register(
+                email    = email,
+                password = password,
+                nama     = nama,
+                role     = "cashier"
+            )
 
             result.fold(
                 onSuccess = {
-
-                    _currentUserEmail.value = email
-                    _currentUserName.value = nama
-                    _currentUserRole.value = "admin"
-
-                    _authUiState.value = AuthUiState.Success("Account created successfully")
-                    _authCheckState.value = AuthCheckState.LoggedIn(_currentUserRole.value)
+                    _authUiState.value = AuthUiState.Success("Akun kasir berhasil dibuat")
                 },
                 onFailure = {
                     _authUiState.value = AuthUiState.Error(
@@ -199,9 +197,6 @@ class AuthViewModel : ViewModel() {
             )
         }
     }
-
-    // ─────────────────────────────
-    // ─────────────────────────────
     // ─────────────────────────────
     // LOGOUT
     // ─────────────────────────────

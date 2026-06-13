@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
 
                     // ─────────────────────────────
-                    // APP NAVIGATION (NO startDestination)
+                    // APP NAVIGATION
                     // ─────────────────────────────
                     AppNavigation(
                         navController = navController,

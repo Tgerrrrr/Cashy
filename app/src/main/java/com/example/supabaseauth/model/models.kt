@@ -73,13 +73,6 @@ data class PenjualanItem(
     val qty: Double,
     val subtotal: Double
 )
-//data class PenjualanUI(
-//    val id: String,
-//    val pelangganNama: String,
-//    val waktu: String,
-//    val total: Double,
-//    val status: String
-//)
 data class PenjualanUI(
     val id: String,
     val pelangganNama: String,

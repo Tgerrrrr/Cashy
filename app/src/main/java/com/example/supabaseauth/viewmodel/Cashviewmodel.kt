@@ -2,30 +2,19 @@ package com.example.supabaseauth.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.supabaseauth.data.SupabaseClientProvider
 import com.example.supabaseauth.model.Kas
+import com.example.supabaseauth.model.KasLog
 import com.example.supabaseauth.repository.CashRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.example.supabaseauth.model.KasLog
-
 
 sealed class CashState {
-
     object Idle : CashState()
-
     object Loading : CashState()
-
     object Empty : CashState()
-
-    data class Success(
-        val cashList: List<Kas>
-    ) : CashState()
-
-    data class Error(
-        val message: String
-    ) : CashState()
+    data class Success(val cashList: List<Kas>) : CashState()
+    data class Error(val message: String) : CashState()
 }
 
 sealed class ActionState {
@@ -42,51 +31,33 @@ sealed class KasLogState {
     data class Success(val logs: List<KasLog>) : KasLogState()
     data class Error(val message: String) : KasLogState()
 }
-class CashViewModel : ViewModel() {
 
-    /* ================= REPOSITORY ================= */
+class CashViewModel : ViewModel() {
 
     private val repository = CashRepository()
 
-    /* ================= REALTIME ================= */
+    private val _cashState = MutableStateFlow<CashState>(CashState.Idle)
+    val cashState: StateFlow<CashState> = _cashState
 
-//    private val realtime =
-//        SupabaseClientProvider.realtimeManager
+    private val _totalSaldo = MutableStateFlow(0.0)
+    val totalSaldo: StateFlow<Double> = _totalSaldo
 
-    /* ================= STATES ================= */
+    private val _actionState = MutableStateFlow<ActionState>(ActionState.Idle)
+    val actionState: StateFlow<ActionState> = _actionState
 
-    private val _cashState =
-        MutableStateFlow<CashState>(CashState.Idle)
+    private val _kasLogState = MutableStateFlow<KasLogState>(KasLogState.Idle)
+    val kasLogState: StateFlow<KasLogState> = _kasLogState
 
-    val cashState: StateFlow<CashState> =
-        _cashState
+    init { refresh() }
 
-    private val _totalSaldo =
-        MutableStateFlow(0.0)
-
-    val totalSaldo: StateFlow<Double> =
-        _totalSaldo
-
-    /* ================= INIT ================= */
-
-    init {
-
-        refresh()
-
-        //observeRealtime()
-    }
-
-    /* ================= LOAD CASH ================= */
-    /* ================= ACTION STATE ================= */
-
-    private val _actionState =
-        MutableStateFlow<ActionState>(ActionState.Idle)
-
-    val actionState: StateFlow<ActionState> =
-        _actionState
+    /* ================= RESET ================= */
 
     fun resetActionState() {
         _actionState.value = ActionState.Idle
+    }
+
+    fun resetKasLogState() {
+        _kasLogState.value = KasLogState.Idle
     }
 
     /* ================= SAVE (ADD / EDIT) ================= */
@@ -122,50 +93,8 @@ class CashViewModel : ViewModel() {
             }
         }
     }
-    fun refresh() {
-
-        viewModelScope.launch {
-
-            _cashState.value = CashState.Loading
-
-            try {
-
-                val cashList =
-                    repository.getAllCash()
-
-                if (cashList.isEmpty()) {
-
-                    _cashState.value =
-                        CashState.Empty
-
-                    _totalSaldo.value = 0.0
-
-                } else {
-
-                    _cashState.value =
-                        CashState.Success(cashList)
-
-                    _totalSaldo.value =
-                        cashList.filter { it.is_active }.sumOf { it.saldo }
-                }
-
-            } catch (e: Exception) {
-
-                _cashState.value =
-                    CashState.Error(
-                        e.message ?: "Terjadi kesalahan"
-                    )
-            }
-        }
-    }
 
     /* ================= KAS LOG ================= */
-
-    private val _kasLogState =
-        MutableStateFlow<KasLogState>(KasLogState.Idle)
-
-    val kasLogState: StateFlow<KasLogState> =
-        _kasLogState
 
     fun loadKasLog(kasId: String) {
         viewModelScope.launch {
@@ -176,28 +105,28 @@ class CashViewModel : ViewModel() {
                     if (logs.isEmpty()) KasLogState.Empty
                     else KasLogState.Success(logs)
             } catch (e: Exception) {
-                _kasLogState.value =
-                    KasLogState.Error(e.message ?: "Gagal memuat log kas")
+                _kasLogState.value = KasLogState.Error(e.message ?: "Gagal memuat log kas")
             }
         }
     }
 
-    fun resetKasLogState() {
-        _kasLogState.value = KasLogState.Idle
+    /* ================= LOAD CASH ================= */
+
+    fun refresh() {
+        viewModelScope.launch {
+            _cashState.value = CashState.Loading
+            try {
+                val cashList = repository.getAllCash()
+                if (cashList.isEmpty()) {
+                    _cashState.value = CashState.Empty
+                    _totalSaldo.value = 0.0
+                } else {
+                    _cashState.value = CashState.Success(cashList)
+                    _totalSaldo.value = cashList.filter { it.is_active }.sumOf { it.saldo }
+                }
+            } catch (e: Exception) {
+                _cashState.value = CashState.Error(e.message ?: "Terjadi kesalahan")
+            }
+        }
     }
-
-    /* ================= REALTIME OBSERVER ================= */
-
-//    private fun observeRealtime() {
-//
-//        viewModelScope.launch {
-//
-//            realtime
-//                .observeTable("kas")
-//                .collect {
-//
-//                    refresh()
-//                }
-//        }
-//    }
 }
