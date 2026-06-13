@@ -8,6 +8,8 @@ import com.example.supabaseauth.repository.CashRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import com.example.supabaseauth.model.KasLog
+
 
 sealed class CashState {
 
@@ -33,6 +35,13 @@ sealed class ActionState {
     data class Error(val message: String) : ActionState()
 }
 
+sealed class KasLogState {
+    object Idle : KasLogState()
+    object Loading : KasLogState()
+    object Empty : KasLogState()
+    data class Success(val logs: List<KasLog>) : KasLogState()
+    data class Error(val message: String) : KasLogState()
+}
 class CashViewModel : ViewModel() {
 
     /* ================= REPOSITORY ================= */
@@ -148,6 +157,33 @@ class CashViewModel : ViewModel() {
                     )
             }
         }
+    }
+
+    /* ================= KAS LOG ================= */
+
+    private val _kasLogState =
+        MutableStateFlow<KasLogState>(KasLogState.Idle)
+
+    val kasLogState: StateFlow<KasLogState> =
+        _kasLogState
+
+    fun loadKasLog(kasId: String) {
+        viewModelScope.launch {
+            _kasLogState.value = KasLogState.Loading
+            try {
+                val logs = repository.getKasLog(kasId)
+                _kasLogState.value =
+                    if (logs.isEmpty()) KasLogState.Empty
+                    else KasLogState.Success(logs)
+            } catch (e: Exception) {
+                _kasLogState.value =
+                    KasLogState.Error(e.message ?: "Gagal memuat log kas")
+            }
+        }
+    }
+
+    fun resetKasLogState() {
+        _kasLogState.value = KasLogState.Idle
     }
 
     /* ================= REALTIME OBSERVER ================= */

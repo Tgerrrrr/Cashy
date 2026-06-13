@@ -1,5 +1,9 @@
 package com.example.supabaseauth.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.example.supabaseauth.model.KasLog
+import com.example.supabaseauth.viewmodel.KasLogState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +21,7 @@ import com.example.supabaseauth.viewmodel.CashState
 import com.example.supabaseauth.viewmodel.CashViewModel
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.DialogProperties
 import com.example.supabaseauth.viewmodel.ActionState
 
 /* =========================================
@@ -31,6 +36,9 @@ fun CashScreen(
     val totalSaldo by cashViewModel.totalSaldo.collectAsState()
     val actionState by cashViewModel.actionState.collectAsState()
 
+    var showLogDialog by remember { mutableStateOf(false) }
+    var selectedKasForLog by remember { mutableStateOf<Kas?>(null) }
+    val kasLogState by cashViewModel.kasLogState.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingKas by remember { mutableStateOf<Kas?>(null) }
 
@@ -97,6 +105,11 @@ fun CashScreen(
                                             id = cash.id ?: return@CashCard,
                                             isActive = !cash.is_active
                                         )
+                                    },
+                                    onShowLog = {
+                                        selectedKasForLog = cash
+                                        cashViewModel.loadKasLog(cash.id ?: "")
+                                        showLogDialog = true
                                     }
                                 )
                             }
@@ -157,6 +170,18 @@ fun CashScreen(
             }
         )
     }
+
+    if (showLogDialog) {
+        KasLogDialog(
+            kasName = selectedKasForLog?.nama ?: "",
+            logState = kasLogState,
+            onDismiss = {
+                showLogDialog = false
+                selectedKasForLog = null
+                cashViewModel.resetKasLogState()
+            }
+        )
+    }
 }
 
 /* =========================================
@@ -167,10 +192,16 @@ fun CashScreen(
 fun CashCard(
     cash: Kas,
     onEdit: () -> Unit,
-    onToggleActive: () -> Unit
+    onToggleActive: () -> Unit,
+    onShowLog: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onShowLog() },
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(Modifier.padding(16.dp)) {
@@ -247,6 +278,13 @@ fun CashFormDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = !isLoading,
+            dismissOnClickOutside = !isLoading,
+            usePlatformDefaultWidth = true
+        ),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp,
         title = {
             Text(if (isEdit) "Edit Kas" else "Tambah Kas")
         },
@@ -361,6 +399,113 @@ fun TotalSaldoSummaryCard(
 
             Text(text = "$jumlahKas kas aktif")
         }
+    }
+}
+
+@Composable
+fun KasLogDialog(
+    kasName: String,
+    logState: KasLogState,
+    onDismiss: () -> Unit
+) {
+    val isLoading = false
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = !isLoading,
+            dismissOnClickOutside = !isLoading,
+            usePlatformDefaultWidth = true
+        ),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp,
+        title = { Text("Riwayat Kas: $kasName") },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 400.dp)
+            ) {
+                when (logState) {
+
+                    is KasLogState.Loading -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    is KasLogState.Empty -> {
+                        Text("Belum ada riwayat transaksi kas")
+                    }
+
+                    is KasLogState.Error -> {
+                        Text(
+                            text = logState.message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    is KasLogState.Success -> {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(logState.logs) { log ->
+                                KasLogItem(log)
+                            }
+                        }
+                    }
+
+                    is KasLogState.Idle -> {}
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Tutup")
+            }
+        }
+    )
+}
+
+@Composable
+fun KasLogItem(log: KasLog) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = if (log.perubahan >= 0) "+ ${formatRupiah(log.perubahan)}"
+                else "- ${formatRupiah(-log.perubahan)}",
+                fontWeight = FontWeight.Bold,
+                color = if (log.perubahan >= 0)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = "Saldo: ${formatRupiah(log.saldo_akhir)}",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        if (!log.keterangan.isNullOrBlank()) {
+            Text(
+                text = log.keterangan,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Text(
+            text = "${log.sumber} • ${log.created_at}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        HorizontalDivider(Modifier.padding(top = 8.dp))
     }
 }
 
