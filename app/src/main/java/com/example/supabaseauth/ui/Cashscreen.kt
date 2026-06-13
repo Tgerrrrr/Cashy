@@ -310,7 +310,6 @@ private fun CashItem(
             )
         }
 
-        // Toggle active chip
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(30.dp))

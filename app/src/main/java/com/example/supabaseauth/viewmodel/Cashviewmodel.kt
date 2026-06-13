@@ -49,7 +49,6 @@ class CashViewModel : ViewModel() {
             _actionState.value = ActionState.Loading
             try {
                 if (isEdit) {
-                    // Hanya update nama — saldo tidak disentuh sama sekali
                     repository.updateCashName(id = kas.id ?: return@launch, nama = kas.nama)
                 } else {
                     repository.addCash(kas)

@@ -155,19 +155,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.Center,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Text("Don't have an account? ", color = Black, fontSize = 14.sp)
-//                Text(
-//                    text = "Signup",
-//                    color = Blue,
-//                    fontSize = 14.sp,
-//                    modifier = Modifier.clickable { onSignup() }
-//                )
-//            }
         }
     }
 }

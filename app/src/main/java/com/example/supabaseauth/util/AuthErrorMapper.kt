@@ -20,8 +20,8 @@ object AuthErrorMapper {
             msg.contains("weak password") || msg.contains("password") ->
                 message ?: "Password is too weak."
 
-            msg.contains("user already registered") ->
-                "This email is already registered."
+//            msg.contains("user already registered") ->
+//                "This email is already registered."
 
             msg.contains("email not confirmed") ->
                 "Please verify your email before logging in."
@@ -32,8 +32,8 @@ object AuthErrorMapper {
             msg.contains("jwt") ->
                 "Session expired. Please login again."
 
-            msg.contains("duplicate") ->
-                "Account already exists."
+//            msg.contains("duplicate") ->
+//                "Account already exists."
 
             msg.isBlank() ->
                 "Unknown error occurred."

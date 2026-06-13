@@ -34,7 +34,7 @@ data class PenjualanItemInsert(
 data class PenjualanResponse(val id: String)
 
 // =============================================================================
-// BARANG (Product) REPOSITORY — cashier read-only
+//Product REPOSITORY
 // =============================================================================
 
 class BarangRepository {
@@ -49,7 +49,7 @@ class BarangRepository {
 }
 
 // =============================================================================
-// KAS REPOSITORY — cashier read-only
+// KAS REPOSITORY
 // =============================================================================
 
 class KasRepository {
@@ -64,7 +64,7 @@ class KasRepository {
 }
 
 // =============================================================================
-// KASIR REPOSITORY — checkout / insert transactions
+// KASIR REPOSITORY
 // =============================================================================
 
 class KasirRepository {
@@ -82,12 +82,7 @@ class KasirRepository {
         supabase.from("penjualan_item").insert(items)
     }
 
-    /**
-     * Decrements stock directly via PostgREST update — no RPC required.
-     * Reads current stok first, then writes (currentStok - qty) back.
-     */
     suspend fun kurangiStokProduk(produkId: String, qtyTerjual: Int) {
-        // 1. Read current stock
         val current = supabase
             .from("product")
             .select {
@@ -96,7 +91,6 @@ class KasirRepository {
             }
             .decodeSingleOrNull<Product>() ?: return
 
-        // 2. Write new stock value (never goes below 0)
         val newStok = maxOf(0.0, current.stok - qtyTerjual)
         supabase
             .from("product")

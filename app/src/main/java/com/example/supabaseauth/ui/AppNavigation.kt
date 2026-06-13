@@ -26,14 +26,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.supabaseauth.viewmodel.AuthCheckState
 import com.example.supabaseauth.viewmodel.AuthViewModel
 
-// ── colors (same as before) ───────────────────────────────────────────────────
 private val NavBg        = Color(0xFFFFFFFF)
 private val NavPrimary   = Color(0xFF1A3C40)
 private val NavUnselected = Color(0xFF90A4AE)
 private val NavIndicator = Color(0xFFE0F2F1)
 private val ScaffoldBg   = Color(0xFFF4F6F8)
 
-// ── which admin routes show the bottom bar ────────────────────────────────────
 private val adminBottomNavRoutes = setOf(
     Screen.Home.route,
     Screen.Transaction.route,
@@ -60,7 +58,6 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Show bottom bar only on admin pages
     val showBottomBar = currentRoute in adminBottomNavRoutes
 
     // ── loading splash ────────────────────────────────────────────────────────
@@ -71,7 +68,6 @@ fun AppNavigation(
         return
     }
 
-    // ── scaffold (admin has bottom bar; cashier screens don't need it) ────────
     Scaffold(
         containerColor = ScaffoldBg,
         bottomBar = {
@@ -104,16 +100,15 @@ fun AppNavigation(
             composable(Screen.Login.route) {
                 LoginScreen(
                     authViewModel = authViewModel,
-                    onSignup = {} // ← intentionally empty: no signup from login
+                    onSignup = {}
                 )
             }
 
-            // ── REGISTER (admin-only, reached from ProfileScreen) ─────────────
             composable(Screen.Register.route) {
                 RegisterScreen(
-                    authViewModel = authViewModel,
-                    authUiState   = authUiState,
-                    onNavigateToLogin = {
+                    authViewModel  = authViewModel,
+                    authUiState    = authUiState,
+                    onNavigateBack = {
                         authViewModel.resetUiState()
                         navController.popBackStack()
                     }

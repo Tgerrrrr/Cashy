@@ -67,11 +67,6 @@ class AddTransactionViewModel : ViewModel() {
                         )
 
                         repo.addExpense(expense)
-
-                        // Assumes ExpenseRepository:
-                        // 1. inserts pengeluaran
-                        // 2. updates kas
-                        // 3. inserts kas_log
                     }
 
                     /* ==========================================

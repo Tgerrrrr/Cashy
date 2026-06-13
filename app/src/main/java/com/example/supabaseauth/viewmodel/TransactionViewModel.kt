@@ -82,7 +82,6 @@ class TransactionViewModel : ViewModel() {
                     .select()
                     .decodeList<KasLog>()
 
-                // Maps untuk lookup — screen yang pakai
                 val pelangganMap = pelanggan.associate { it.id to it.nama }
                 val kasMap = kasList.associate { it.id to it.nama }
 

@@ -41,10 +41,6 @@ private data class TransactionDisplayItem(
     val status: String
 )
 
-//// ─── Formatter ───────────────────────────────────────────────────────────────
-//private fun formatRupiah(value: Double): String =
-//    NumberFormat.getCurrencyInstance(Locale("in", "ID")).format(value)
-
 // ─── Mapper ──────────────────────────────────────────────────────────────────
 private fun TransactionRaw.toDisplayItem(
     pelangganMap: Map<String, String>,

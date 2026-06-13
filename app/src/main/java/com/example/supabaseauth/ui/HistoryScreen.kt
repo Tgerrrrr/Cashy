@@ -219,7 +219,7 @@ private fun ActivityCard(entry: ActivityEntryUI) {
 
         Column(modifier = Modifier.weight(1f)) {
 
-            // TITLE (clean, single line)
+            // TITLE
             Text(
                 text = entry.title,
                 fontSize = 14.sp,
@@ -230,7 +230,7 @@ private fun ActivityCard(entry: ActivityEntryUI) {
 
             Spacer(Modifier.height(4.dp))
 
-            // DETAILS (compact instead of messy stack)
+            // DETAILS
             entry.details.take(2).forEach {
                 Text(
                     text = it,
@@ -264,7 +264,7 @@ private fun ActivityCard(entry: ActivityEntryUI) {
             }
         }
 
-        // TIME (fixed format, not ugly raw timestamp)
+        // TIME
         Text(
             text = entry.timestamp,
             fontSize = 10.sp,

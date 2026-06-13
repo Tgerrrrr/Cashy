@@ -18,6 +18,4 @@ object SupabaseClientProvider {
 
         install(Realtime)
     }
-
-    //val realtimeManager = RealtimeManager(client)
 }
