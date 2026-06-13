@@ -80,14 +80,14 @@ class CashRepository {
     }
 }
 
-class TransactionRepository(private val client: SupabaseClient) {
-
-    suspend fun getRecentTransactions(): List<Penjualan> {
-        return client
-            .from("penjualan")
-            .select()
-            .decodeList<Penjualan>()
-            .sortedByDescending { it.waktu }
-            .take(10)
-    }
-}
+//class TransactionRepository(private val client: SupabaseClient) {
+//
+//    suspend fun getRecentTransactions(): List<Penjualan> {
+//        return client
+//            .from("penjualan")
+//            .select()
+//            .decodeList<Penjualan>()
+//            .sortedByDescending { it.waktu }
+//            .take(10)
+//    }
+//}

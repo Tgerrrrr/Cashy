@@ -6,7 +6,7 @@ import com.example.supabaseauth.model.Penjualan
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 
-class ExpenseRepository(client1: SupabaseClient) {
+class ExpenseRepository {
 
     private val client = SupabaseClientProvider.client
 
@@ -30,13 +30,4 @@ class ExpenseRepository(client1: SupabaseClient) {
                 }
             }
     }
-    suspend fun getAllTransactions(): List<Penjualan> {
-        return client
-            .from("penjualan")
-            .select()
-            .decodeList<Penjualan>()
-            .sortedByDescending { it.waktu }
-    }
-
-
 }
