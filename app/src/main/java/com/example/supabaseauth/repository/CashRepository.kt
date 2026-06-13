@@ -6,6 +6,8 @@ import io.github.jan.supabase.postgrest.query.Order
 import com.example.supabaseauth.model.Kas
 import com.example.supabaseauth.model.Penjualan
 import io.github.jan.supabase.SupabaseClient
+import com.example.supabaseauth.model.KasLog
+
 
 class CashRepository {
 
@@ -43,9 +45,6 @@ class CashRepository {
             }
     }
 
-    // =========================================
-    // UPDATE CASH
-    // =========================================
     suspend fun updateCashName(id: String, nama: String) {
         client
             .from("kas")
@@ -68,6 +67,16 @@ class CashRepository {
             .delete {
                 filter { eq("id", id) }
             }
+    }
+
+    suspend fun getKasLog(kasId: String): List<KasLog> {
+        return client
+            .from("kas_log")
+            .select {
+                filter { eq("kas_id", kasId) }
+                order(column = "created_at", order = Order.DESCENDING)
+            }
+            .decodeList<KasLog>()
     }
 }
 

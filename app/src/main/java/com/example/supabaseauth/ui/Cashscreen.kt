@@ -2,6 +2,7 @@ package com.example.supabaseauth.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,11 +20,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.supabaseauth.model.Kas
+import com.example.supabaseauth.model.KasLog
 import com.example.supabaseauth.viewmodel.ActionState
 import com.example.supabaseauth.viewmodel.CashState
 import com.example.supabaseauth.viewmodel.CashViewModel
+import com.example.supabaseauth.viewmodel.KasLogState
 
 private val CashyDark    = Color(0xFF002F3B)
 private val CashyPrimary = Color(0xFF00657E)
@@ -42,9 +46,12 @@ fun CashScreen(
     val cashState   by cashViewModel.cashState.collectAsState()
     val totalSaldo  by cashViewModel.totalSaldo.collectAsState()
     val actionState by cashViewModel.actionState.collectAsState()
+    val kasLogState by cashViewModel.kasLogState.collectAsState()
 
-    var showAddDialog  by remember { mutableStateOf(false) }
-    var editingKas     by remember { mutableStateOf<Kas?>(null) }
+    var showAddDialog      by remember { mutableStateOf(false) }
+    var editingKas         by remember { mutableStateOf<Kas?>(null) }
+    var showLogDialog      by remember { mutableStateOf(false) }
+    var selectedKasForLog  by remember { mutableStateOf<Kas?>(null) }
 
     LaunchedEffect(actionState) {
         if (actionState is ActionState.Success) {
@@ -175,14 +182,17 @@ fun CashScreen(
                         ) { kas ->
                             CashItem(
                                 kas = kas,
-                                onEdit = {
-                                    editingKas = kas
-                                },
+                                onEdit = { editingKas = kas },
                                 onToggleActive = {
                                     cashViewModel.setCashActive(
                                         id = kas.id ?: return@CashItem,
                                         isActive = !kas.is_active
                                     )
+                                },
+                                onShowLog = {
+                                    selectedKasForLog = kas
+                                    cashViewModel.loadKasLog(kas.id ?: "")
+                                    showLogDialog = true
                                 }
                             )
                         }
@@ -261,6 +271,19 @@ fun CashScreen(
             }
         )
     }
+
+    // ── Kas Log Dialog ────────────────────────────────────────────────────────
+    if (showLogDialog) {
+        KasLogDialog(
+            kasName = selectedKasForLog?.nama ?: "",
+            logState = kasLogState,
+            onDismiss = {
+                showLogDialog = false
+                selectedKasForLog = null
+                cashViewModel.resetKasLogState()
+            }
+        )
+    }
 }
 
 /* =========================================
@@ -271,13 +294,18 @@ fun CashScreen(
 private fun CashItem(
     kas: Kas,
     onEdit: () -> Unit,
-    onToggleActive: () -> Unit
+    onToggleActive: () -> Unit,
+    onShowLog: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(CashyWhite)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onShowLog() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -326,7 +354,6 @@ private fun CashItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Edit icon
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
@@ -345,7 +372,7 @@ private fun CashItem(
 }
 
 /* =========================================
-   ADD DIALOG — nama + saldo awal
+   ADD DIALOG
 ========================================= */
 
 @Composable
@@ -363,7 +390,13 @@ private fun CashAddDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = !isLoading,
+            dismissOnClickOutside = !isLoading,
+            usePlatformDefaultWidth = true
+        ),
         containerColor = CashyWhite,
+        tonalElevation = 6.dp,
         title = {
             Text(
                 "Add Cash Account",
@@ -454,12 +487,18 @@ private fun CashEditDialog(
     onDismiss: () -> Unit,
     onSave: (Kas) -> Unit
 ) {
-    var nama     by remember { mutableStateOf(kas.nama) }
-    val isValid  = nama.isNotBlank()
+    var nama    by remember { mutableStateOf(kas.nama) }
+    val isValid = nama.isNotBlank()
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = !isLoading,
+            dismissOnClickOutside = !isLoading,
+            usePlatformDefaultWidth = true
+        ),
         containerColor = CashyWhite,
+        tonalElevation = 6.dp,
         title = {
             Text(
                 "Edit Cash Account",
@@ -481,7 +520,6 @@ private fun CashEditDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Saldo ditampilkan read-only dengan info
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -554,6 +592,124 @@ private fun CashEditDialog(
 }
 
 /* =========================================
+   KAS LOG DIALOG
+========================================= */
+
+@Composable
+fun KasLogDialog(
+    kasName: String,
+    logState: KasLogState,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = true
+        ),
+        containerColor = CashyWhite,
+        tonalElevation = 6.dp,
+        title = {
+            Text(
+                "Riwayat Kas: $kasName",
+                fontWeight = FontWeight.Bold,
+                color = CashyDark
+            )
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp, max = 400.dp)
+            ) {
+                when (logState) {
+                    is KasLogState.Loading -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = CashyPrimary)
+                        }
+                    }
+                    is KasLogState.Empty -> {
+                        Text("Belum ada riwayat transaksi kas", color = Color.Gray)
+                    }
+                    is KasLogState.Error -> {
+                        Text(logState.message, color = Color.Red, fontSize = 13.sp)
+                    }
+                    is KasLogState.Success -> {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(logState.logs) { log ->
+                                KasLogItem(log)
+                            }
+                        }
+                    }
+                    is KasLogState.Idle -> {}
+                }
+            }
+        },
+        confirmButton = {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(CashyLight)
+                    .clickable { onDismiss() }
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Text("Tutup", color = CashyPrimary, fontSize = 13.sp)
+            }
+        }
+    )
+}
+
+/* =========================================
+   KAS LOG ITEM
+========================================= */
+
+@Composable
+fun KasLogItem(log: KasLog) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CashyLight)
+            .padding(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = if (log.perubahan >= 0) "+ ${formatRupiah(log.perubahan)}"
+                else "- ${formatRupiah(-log.perubahan)}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = if (log.perubahan >= 0) Color(0xFF2A7F13) else Color(0xFFD32F2F)
+            )
+            Text(
+                text = "Saldo: ${formatRupiah(log.saldo_akhir)}",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+
+        if (!log.keterangan.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = log.keterangan,
+                fontSize = 12.sp,
+                color = CashyDark
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "${log.sumber} • ${log.created_at}",
+            fontSize = 11.sp,
+            color = Color.Gray
+        )
+    }
+}
+
+/* =========================================
    HELPER — TextField colors
 ========================================= */
 
@@ -564,3 +720,5 @@ private fun cashyTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor    = CashyPrimary,
     cursorColor          = CashyPrimary
 )
+
+// formatRupiah defined in CashyTheme.kt
