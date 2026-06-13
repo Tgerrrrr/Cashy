@@ -86,6 +86,26 @@ class CashRepository {
     }
 
     // =========================================
+    // SET ACTIVE / NONAKTIFKAN
+    // =========================================
+    suspend fun setCashActive(
+        id: String,
+        isActive: Boolean
+    ) {
+        client
+            .from("kas")
+            .update(
+                {
+                    set("is_active", isActive)
+                }
+            ) {
+                filter {
+                    eq("id", id)
+                }
+            }
+    }
+
+    // =========================================
     // DELETE CASH
     // =========================================
     suspend fun deleteCash(

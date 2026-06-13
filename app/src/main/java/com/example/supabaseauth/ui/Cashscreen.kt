@@ -15,6 +15,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.supabaseauth.model.Kas
 import com.example.supabaseauth.viewmodel.CashState
 import com.example.supabaseauth.viewmodel.CashViewModel
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.example.supabaseauth.viewmodel.ActionState
 
 /* =========================================
    CASH SCREEN
@@ -26,97 +29,133 @@ fun CashScreen(
 ) {
     val cashState by cashViewModel.cashState.collectAsState()
     val totalSaldo by cashViewModel.totalSaldo.collectAsState()
+    val actionState by cashViewModel.actionState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    var showDialog by remember { mutableStateOf(false) }
+    var editingKas by remember { mutableStateOf<Kas?>(null) }
 
-        when (val state = cashState) {
+    // Tutup dialog otomatis saat aksi sukses
+    LaunchedEffect(actionState) {
+        if (actionState is ActionState.Success) {
+            showDialog = false
+            editingKas = null
+            cashViewModel.resetActionState()
+        }
+    }
 
-            is CashState.Loading,
-            is CashState.Idle -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                editingKas = null
+                showDialog = true
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Tambah Kas")
             }
+        }
+    ) { padding ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
 
-            is CashState.Success -> {
+            when (val state = cashState) {
 
-                val cashList: List<Kas> = state.cashList
-
-                Column(modifier = Modifier.fillMaxSize()) {
-
-                    TotalSaldoSummaryCard(
-                        totalSaldo = totalSaldo,
-                        jumlahKas = cashList.size,
-                        onRefresh = { cashViewModel.refresh() }
-                    )
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            items = cashList,
-                            key = { cash -> cash.id ?: "" }
-                        ) { cash ->
-                            CashCard(cash)
-                        }
+                is CashState.Loading,
+                is CashState.Idle -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            }
 
-            is CashState.Empty -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                is CashState.Success -> {
+                    val cashList: List<Kas> = state.cashList
 
-                        Text("Belum ada data kas")
+                    Column(modifier = Modifier.fillMaxSize()) {
 
-                        Spacer(Modifier.height(16.dp))
-
-                        Button(onClick = { cashViewModel.refresh() }) {
-                            Text("Refresh")
-                        }
-                    }
-                }
-            }
-
-            is CashState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Default.ErrorOutline,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
+                        TotalSaldoSummaryCard(
+                            totalSaldo = totalSaldo,
+                            jumlahKas = cashList.count { it.is_active },
+                            onRefresh = { cashViewModel.refresh() }
                         )
 
-                        Spacer(Modifier.height(12.dp))
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = cashList,
+                                key = { cash -> cash.id ?: "" }
+                            ) { cash ->
+                                CashCard(
+                                    cash = cash,
+                                    onEdit = {
+                                        editingKas = cash
+                                        showDialog = true
+                                    },
+                                    onToggleActive = {
+                                        cashViewModel.setCashActive(
+                                            id = cash.id ?: return@CashCard,
+                                            isActive = !cash.is_active
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
-                        Text(state.message)
+                is CashState.Empty -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Belum ada data kas")
+                            Spacer(Modifier.height(16.dp))
+                            Button(onClick = { cashViewModel.refresh() }) {
+                                Text("Refresh")
+                            }
+                        }
+                    }
+                }
 
-                        Spacer(Modifier.height(12.dp))
-
-                        Button(onClick = { cashViewModel.refresh() }) {
-                            Icon(Icons.Default.Refresh, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Coba Lagi")
+                is CashState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(state.message)
+                            Spacer(Modifier.height(12.dp))
+                            Button(onClick = { cashViewModel.refresh() }) {
+                                Icon(Icons.Default.Refresh, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Coba Lagi")
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showDialog) {
+        CashFormDialog(
+            initialKas = editingKas,
+            isLoading = actionState is ActionState.Loading,
+            errorMessage = (actionState as? ActionState.Error)?.message,
+            onDismiss = {
+                showDialog = false
+                editingKas = null
+                cashViewModel.resetActionState()
+            },
+            onSave = { kas, isEdit ->
+                cashViewModel.saveCash(kas, isEdit)
+            }
+        )
     }
 }
 
@@ -125,7 +164,11 @@ fun CashScreen(
 ========================================= */
 
 @Composable
-fun CashCard(cash: Kas) {
+fun CashCard(
+    cash: Kas,
+    onEdit: () -> Unit,
+    onToggleActive: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -139,11 +182,8 @@ fun CashCard(cash: Kas) {
             ) {
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-
                     Icon(Icons.Default.AccountBalance, null)
-
                     Spacer(Modifier.width(8.dp))
-
                     Text(
                         text = cash.nama,
                         style = MaterialTheme.typography.titleMedium,
@@ -151,19 +191,24 @@ fun CashCard(cash: Kas) {
                     )
                 }
 
-                if (cash.is_active) {
-                    Text("Aktif")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                    AssistChip(
+                        onClick = onToggleActive,
+                        label = { Text(if (cash.is_active) "Aktif" else "Nonaktif") }
+                    )
+
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    }
                 }
             }
 
             Spacer(Modifier.height(12.dp))
-
             HorizontalDivider()
-
             Spacer(Modifier.height(12.dp))
 
             Text("Saldo")
-
             Spacer(Modifier.height(4.dp))
 
             Text(
@@ -174,6 +219,100 @@ fun CashCard(cash: Kas) {
             )
         }
     }
+}
+
+/* =========================================
+   CASH FORM DIALOG (ADD / EDIT)
+========================================= */
+
+@Composable
+fun CashFormDialog(
+    initialKas: Kas?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onDismiss: () -> Unit,
+    onSave: (Kas, Boolean) -> Unit
+) {
+    val isEdit = initialKas != null
+
+    var nama by remember { mutableStateOf(initialKas?.nama ?: "") }
+    var saldoText by remember {
+        mutableStateOf(
+            if (initialKas != null) initialKas.saldo.toString() else "0"
+        )
+    }
+
+    val saldoValue = saldoText.toDoubleOrNull()
+    val isValid = nama.isNotBlank() && saldoValue != null
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = {
+            Text(if (isEdit) "Edit Kas" else "Tambah Kas")
+        },
+        text = {
+            Column {
+
+                OutlinedTextField(
+                    value = nama,
+                    onValueChange = { nama = it },
+                    label = { Text("Nama Kas") },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = saldoText,
+                    onValueChange = { saldoText = it },
+                    label = { Text("Saldo Awal") },
+                    singleLine = true,
+                    enabled = !isLoading,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (errorMessage != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = isValid && !isLoading,
+                onClick = {
+                    val kas = Kas(
+                        id = initialKas?.id,
+                        nama = nama.trim(),
+                        saldo = saldoValue ?: 0.0,
+                        is_active = initialKas?.is_active ?: true,
+                        created_at = initialKas?.created_at
+                    )
+                    onSave(kas, isEdit)
+                }
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(if (isEdit) "Simpan" else "Tambah")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
+                Text("Batal")
+            }
+        }
+    )
 }
 
 /* =========================================

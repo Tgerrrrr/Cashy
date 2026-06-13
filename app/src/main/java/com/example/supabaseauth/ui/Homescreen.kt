@@ -112,6 +112,9 @@ fun HomeScreen(
             },
             onOpenHistory = {
                 navController.navigate(Screen.History.route)
+            },
+            onOpenCash = {
+                navController.navigate(Screen.Cash.route)
             }
         )
 
@@ -406,7 +409,8 @@ fun TransactionSummaryCard(
     cashState: CashState,
     totalSaldo: Double,
     onAddTransaction: () -> Unit,
-    onOpenHistory: () -> Unit
+    onOpenHistory: () -> Unit,
+    onOpenCash: () -> Unit
 ) {
 
     Box(
@@ -425,7 +429,7 @@ fun TransactionSummaryCard(
         ) {
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth() .clickable { onOpenCash() },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -434,6 +438,12 @@ fun TransactionSummaryCard(
                     text = "Cash Balance",
                     color = Color.White,
                     fontSize = 14.sp
+                )
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Kelola Kas",
+                    tint = Color.White
                 )
             }
 
@@ -446,7 +456,8 @@ fun TransactionSummaryCard(
                 },
                 color = Color.White,
                 fontSize = 29.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable { onOpenCash() }
             )
 
             Row(

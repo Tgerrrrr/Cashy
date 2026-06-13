@@ -26,6 +26,13 @@ sealed class CashState {
     ) : CashState()
 }
 
+sealed class ActionState {
+    object Idle : ActionState()
+    object Loading : ActionState()
+    object Success : ActionState()
+    data class Error(val message: String) : ActionState()
+}
+
 class CashViewModel : ViewModel() {
 
     /* ================= REPOSITORY ================= */
@@ -61,7 +68,51 @@ class CashViewModel : ViewModel() {
     }
 
     /* ================= LOAD CASH ================= */
+    /* ================= ACTION STATE ================= */
 
+    private val _actionState =
+        MutableStateFlow<ActionState>(ActionState.Idle)
+
+    val actionState: StateFlow<ActionState> =
+        _actionState
+
+    fun resetActionState() {
+        _actionState.value = ActionState.Idle
+    }
+
+    /* ================= SAVE (ADD / EDIT) ================= */
+
+    fun saveCash(kas: Kas, isEdit: Boolean) {
+        viewModelScope.launch {
+            _actionState.value = ActionState.Loading
+            try {
+                if (isEdit) {
+                    repository.updateCash(kas)
+                } else {
+                    repository.addCash(kas)
+                }
+                _actionState.value = ActionState.Success
+                refresh()
+            } catch (e: Exception) {
+                _actionState.value = ActionState.Error(e.message ?: "Gagal menyimpan kas")
+            }
+        }
+    }
+
+    /* ================= NONAKTIFKAN / AKTIFKAN ================= */
+
+    fun setCashActive(id: String, isActive: Boolean) {
+        viewModelScope.launch {
+            _actionState.value = ActionState.Loading
+            try {
+                repository.setCashActive(id, isActive)
+                _actionState.value = ActionState.Success
+                refresh()
+            } catch (e: Exception) {
+                _actionState.value = ActionState.Error(e.message ?: "Gagal mengubah status kas")
+            }
+        }
+    }
     fun refresh() {
 
         viewModelScope.launch {
@@ -86,7 +137,7 @@ class CashViewModel : ViewModel() {
                         CashState.Success(cashList)
 
                     _totalSaldo.value =
-                        cashList.sumOf { it.saldo }
+                        cashList.filter { it.is_active }.sumOf { it.saldo }
                 }
 
             } catch (e: Exception) {
